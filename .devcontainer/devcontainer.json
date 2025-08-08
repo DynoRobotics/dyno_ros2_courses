@@ -22,7 +22,9 @@
         "littlefoxteam.vscode-python-test-adapter",
         "peakchen90.open-html-in-browser",
         "ms-vscode.cpptools-extension-pack",
-        "trunk.io"
+        "trunk.io",
+        "saoudrizwan.claude-dev",
+        "bierner.markdown-mermaid"
       ]
     }
   },

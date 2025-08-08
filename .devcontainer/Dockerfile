@@ -1,7 +1,7 @@
 ###########################################
 # Base image
 ###########################################
-FROM ubuntu:22.04 AS base
+FROM ubuntu:24.04 AS base
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -22,34 +22,36 @@ RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime \
   && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update && apt-get -y upgrade \
-    && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/*
 
 # Install common programs
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    gnupg2 \
-    lsb-release \
-    sudo \
-    software-properties-common \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install ROS2
-RUN sudo add-apt-repository universe \
-  && curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg \
-  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null \
-  && apt-get update && apt-get install -y --no-install-recommends \
-    ros-humble-ros-base \
-    python3-argcomplete \
-    ros-humble-rmw-cyclonedds-cpp \
+  curl \
+  gnupg2 \
+  lsb-release \
+  sudo \
+  software-properties-common \
+  wget \
   && rm -rf /var/lib/apt/lists/*
 
-ENV ROS_DISTRO=humble
-ENV AMENT_PREFIX_PATH=/opt/ros/humble
-ENV COLCON_PREFIX_PATH=/opt/ros/humble
-ENV LD_LIBRARY_PATH=/opt/ros/humble/lib
-ENV PATH=/opt/ros/humble/bin:$PATH
-ENV PYTHONPATH=/opt/ros/humble/lib/python3.10/site-packages
+# Install ROS2
+
+RUN export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F\" '{print $4}') \
+  && curl -L -o /tmp/ros2-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo $VERSION_CODENAME)_all.deb" \
+  && sudo dpkg -i /tmp/ros2-apt-source.deb
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  ros-jazzy-desktop \
+  python3-argcomplete \
+  ros-jazzy-rmw-zenoh-cpp \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV ROS_DISTRO=jazzy
+ENV AMENT_PREFIX_PATH=/opt/ros/jazzy
+ENV COLCON_PREFIX_PATH=/opt/ros/jazzy
+ENV LD_LIBRARY_PATH=/opt/ros/jazzy/lib
+ENV PATH=/opt/ros/jazzy/bin:$PATH
+ENV PYTHONPATH=/opt/ros/jazzy/lib/python3.10/site-packages
 ENV ROS_PYTHON_VERSION=3
 ENV ROS_VERSION=2
 ENV DEBIAN_FRONTEND=
@@ -66,7 +68,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python3-argcomplete \
   python3-pip \
   ros-dev-tools \
-  ros-humble-ament-* \
+  ros-jazzy-ament-* \
   vim \
   ranger \
   htop \
@@ -75,24 +77,42 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN rosdep init || echo "rosdep already initialized"
 
 ARG USERNAME=ros
-ARG USER_UID=1000
+ARG USER_UID=1001
 ARG USER_GID=$USER_UID
 
 # Create a non-root user
-RUN groupadd --gid $USER_GID $USERNAME \
-  && useradd -s /bin/bash --uid $USER_UID --gid $USER_GID -m $USERNAME \
-  # Add sudo support for the non-root user
+
+RUN if ! getent group $USER_GID; then groupadd -g $USER_GID $USERNAME; fi \
+  && if ! id -u $USER_UID >/dev/null 2>&1; then \
+  useradd -m -u $USER_UID -g $USER_GID -s /bin/bash $USERNAME; \
+  fi \
   && apt-get update \
   && apt-get install -y sudo \
-  && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME\
+  && echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME \
   && chmod 0440 /etc/sudoers.d/$USERNAME \
   && rm -rf /var/lib/apt/lists/*
 
 # Set up autocompletion for user
-RUN apt-get update && apt-get install -y git-core bash-completion \
+RUN apt-get update && apt-get install -y git bash-completion \
   && echo "if [ -f /opt/ros/${ROS_DISTRO}/setup.bash ]; then source /opt/ros/${ROS_DISTRO}/setup.bash; fi" >> /home/$USERNAME/.bashrc \
   && echo "if [ -f /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash ]; then source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash; fi" >> /home/$USERNAME/.bashrc \
   && rm -rf /var/lib/apt/lists/*
+
+# Install Mesa for software OpenGL
+RUN apt-get update && apt-get install -y \
+    mesa-utils \
+    libgl1 \
+    libglx-mesa0 \
+    libgl1-mesa-dri \
+    libglu1-mesa \
+    && rm -rf /var/lib/apt/lists/*
+
+# Optional: Install TurboVNC for fast rendering
+RUN apt-get update && apt-get install -y \
+    xvfb \
+    x11vnc \
+    fluxbox \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN adduser ros dialout
 
@@ -114,15 +134,15 @@ WORKDIR $DEPENDENCIES_WS
 COPY ros_dependencies.repos ros_dependencies.repos
 RUN vcs import src < ros_dependencies.repos
 RUN apt-get update && \
-    rosdep update && \
-    rosdep install -q -y --from-paths src --ignore-src && \
-    rm -rf /var/likb/apt/lists/*
+  rosdep update && \
+  rosdep install -q -y --from-paths src --ignore-src && \
+  rm -rf /var/likb/apt/lists/*
 
-RUN . /opt/ros/humble/setup.sh && colcon build --merge-install --cmake-args -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE
+RUN . /opt/ros/jazzy/setup.sh && colcon build --merge-install --cmake-args -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE
 
 # Install PIP requirements
 COPY requirements.txt /tmp/
-RUN python3 -m pip install -r /tmp/requirements.txt
+RUN python3 -m pip install --no-cache-dir --break-system-packages -r /tmp/requirements.txt
 
 ENV DEBIAN_FRONTEND=dialog
 
@@ -134,10 +154,10 @@ RUN mkdir ws
 COPY --chown=$USERNAME . ws
 
 RUN apt-get update && \
-    . $DEPENDENCIES_WS/install/setup.sh && \
-    rosdep update && \
-    rosdep install --from-paths ws/src --ignore-src -y && \
-    rm -rf /var/lib/apt/lists/*
+  . $DEPENDENCIES_WS/install/setup.sh && \
+  rosdep update && \
+  rosdep install --from-paths ws/src --ignore-src -y && \
+  rm -rf /var/lib/apt/lists/*
 
 USER $USERNAME
 
@@ -152,4 +172,4 @@ RUN echo "if [ -f $DEPENDENCIES_WS/install/setup.bash ]; then source $DEPENDENCI
 RUN echo "if [ -f ${WS}/ws/run-completion ]; then source ${WS}/ws/run-completion; fi" >> ${HOME}/.bashrc
 
 RUN echo "export RCUTILS_COLORIZED_OUTPUT=1" >> /home/ros/.bashrc
-RUN echo "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp" >> /home/ros/.bashrc
+RUN echo "export RMW_IMPLEMENTATION=rmw_zenoh_cpp" >> /home/ros/.bashrc
