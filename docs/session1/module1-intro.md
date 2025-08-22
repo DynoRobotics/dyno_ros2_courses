@@ -174,11 +174,6 @@ sequenceDiagram
     VEL->>FORCE: /enable_force (Empty)
     FORCE-->>VEL: Success
     VEL-->>OP: System Active
-
-    Note over VEL: Auto-disable after timeout
-    VEL->>FORCE: Disable (force = 0)
-    FORCE-->>VEL: Success
-    VEL-->>OP: System Safe
 ```
 
 **Characteristics**:
@@ -198,35 +193,31 @@ sequenceDiagram
 
 ```mermaid
 graph TD
-    ROOT[Dredging Mission] --> SEQ[Sequence]
-
-    SEQ --> LOWER[Lower Dredging Unit]
-    SEQ --> COVER[Cover Area Pattern]
-    SEQ --> RAISE[Raise Dredging Unit]
-
-    LOWER --> L1[Check Depth Sensor]
-    LOWER --> L2[Activate Winches]
-    LOWER --> L3[Monitor Descent Rate]
-
-    COVER --> C1[Navigate to Start Point]
-    COVER --> C2[Execute Lawn Mower Pattern]
-    COVER --> C3[Monitor Coverage Progress]
-
-    C2 --> ROW[For Each Row]
-    ROW --> MOVE[Move to Row Start]
-    ROW --> SWEEP[Sweep Across Row]
-    ROW --> TURN[Turn to Next Row]
-
-    RAISE --> R1[Stop Dredging]
-    RAISE --> R2[Retract Winches]
-    RAISE --> R3[Confirm Surface Position]
+    ROOT[Dredging Mission] --> SELECTOR[Selector]
+    
+    SELECTOR --> RECOVERY_SEQ[Recovery Sequence]
+    SELECTOR --> MAIN_SEQ[Main Sequence]
+    
+    RECOVERY_SEQ --> PROBLEM_DETECTED[Problem Detected?]
+    RECOVERY_SEQ --> WAIT_OP[Wait for Operator]
+    RECOVERY_SEQ --> RECOVERY[Recovery Behavior]
+    
+    MAIN_SEQ --> SYSTEM_OK[System OK?]
+    MAIN_SEQ --> LOWER[Lower Dredging Unit]
+    MAIN_SEQ --> COVER[Cover Area Pattern]
+    MAIN_SEQ --> RAISE[Raise Dredging Unit]
 
     classDef action fill:#1565c0,stroke:#0d47a1,stroke-width:2px,color:#ffffff
     classDef sequence fill:#6a1b9a,stroke:#4a148c,stroke-width:2px,color:#ffffff
+    classDef selector fill:#d32f2f,stroke:#b71c1c,stroke-width:2px,color:#ffffff
     classDef condition fill:#2e7d32,stroke:#1b5e20,stroke-width:2px,color:#ffffff
+    classDef wait fill:#795548,stroke:#5d4037,stroke-width:2px,color:#ffffff
 
-    class LOWER,COVER,RAISE,L1,L2,L3,C1,C2,C3,MOVE,SWEEP,TURN,R1,R2,R3 action
-    class ROOT,SEQ,ROW sequence
+    class LOWER,COVER,RAISE,RECOVERY action
+    class ROOT,RECOVERY_SEQ,MAIN_SEQ sequence
+    class SELECTOR selector
+    class PROBLEM_DETECTED,SYSTEM_OK condition
+    class WAIT_OP wait
 ```
 
 **Characteristics**:
@@ -270,7 +261,7 @@ force_node:
 | Pattern       | Use When                            | Dredging Example                |
 | ------------- | ----------------------------------- | ------------------------------- |
 | **Pub/Sub**   | Continuous data, multiple listeners | GPS position, winch status      |
-| **Service**   | Immediate response needed           | Emergency stop, system status   |
+| **Service**   | Immediate response needed           | Emergency stop                  |
 | **Action**    | Long operation with progress        | Execute dredging pattern        |
 | **Parameter** | System configuration                | Winch calibration, force limits |
 
@@ -279,7 +270,7 @@ force_node:
 #### Typical Dredging Operation
 
 1. **Parameters**: Load winch calibration, PI controller gains, and coordinate transformation settings
-2. **Service**: Check system status - GPS signal good? All nodes ready?
+2. **Service**: Enable/disable movement
 3. **Pub/Sub**: GPS continuously publishes position data to localization node
 4. **Pub/Sub**: Localization publishes odometry data to velocity and force controllers
 5. **Action**: Execute dredging pattern - planner sends velocity commands over time

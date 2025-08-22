@@ -12,8 +12,8 @@ function check_in_container {
 function in_container_install_dependencies() {
 	check_in_container
 	cd $DIR &&
-		sudo bash -c 'apt-get update && rosdep install --from-paths src --ignore-src -y' &&
-		python3 -m pip install -r requirements.txt
+		bash -c 'sudo apt-get update && rosdep install --from-paths src --ignore-src -y' &&
+		python3 -m pip install --break-system-packages -r requirements.txt
 }
 
 function in_container_build() {

@@ -3,9 +3,11 @@
   "name": "ros2_vscode",
   "dockerComposeFile": "../docker-compose.yml",
   "service": "ros2_vscode_dev",
-  "runServices": ["ros2_vscode_dev"],
-  "remoteUser": "ros",
-  "workspaceFolder": "/home/ros/ws",
+  "runServices": [
+    "ros2_vscode_dev"
+  ],
+  "remoteUser": "ubuntu",
+  "workspaceFolder": "/home/ubuntu/ws",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -13,7 +15,6 @@
         "ms-python.python",
         "MS-vsliveshare.vsliveshare",
         "ms-vscode.cmake-tools",
-        "github.copilot",
         "ms-vscode.cpptools",
         "eamodio.gitlens",
         "python.flake8",
@@ -22,11 +23,12 @@
         "littlefoxteam.vscode-python-test-adapter",
         "peakchen90.open-html-in-browser",
         "ms-vscode.cpptools-extension-pack",
-        "trunk.io",
         "saoudrizwan.claude-dev",
         "bierner.markdown-mermaid"
       ]
     }
   },
-  "forwardPorts": [6006]
+  "forwardPorts": [
+    6006
+  ]
 }

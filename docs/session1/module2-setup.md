@@ -21,7 +21,7 @@ By the end of this module, participants will be able to:
 
 ### Docker Development Environment
 
-Modern ROS2 development uses containerized environments for consistency and portability. We'll use the same setup that Dyno Robotics uses for all projects.
+Modern ROS2 development uses containerized environments for consistency and portability. We'll use the same setup that Dyno Robotics uses for most projects.
 
 #### Why Docker for ROS2?
 
@@ -38,7 +38,7 @@ graph TB
         subgraph "Docker Container"
             ROS2[ROS2 Humble]
             TOOLS[Development Tools]
-            WORKSPACE[/workspace]
+            WORKSPACE[Workspace]
         end
         VSCODE[VSCode]
         FILES[Project Files]
@@ -106,14 +106,10 @@ code .
 
 ```bash
 # Inside the container terminal
-source /opt/ros/humble/setup.bash
 ros2 --help
 
 # Check available packages
 ros2 pkg list | head -10
-
-# Verify workspace setup
-echo $ROS_PACKAGE_PATH
 ```
 
 ---
@@ -182,19 +178,17 @@ my_robot_cpp/
 cd /workspace/src
 
 # Create Python package
-ros2 pkg create --build-type ament_python my_first_package \
-    --dependencies rclpy std_msgs
+ros2 pkg create --build-type ament_python my_first_py --dependencies rclpy std_msgs
 
 # Examine the generated structure
-tree my_first_package/
+tree my_first_py/
 ```
 
 #### Step 2: Create C++ Package
 
 ```bash
 # Create C++ package
-ros2 pkg create --build-type ament_cmake my_first_cpp \
-    --dependencies rclcpp std_msgs
+ros2 pkg create --build-type ament_cmake my_first_cpp --dependencies rclcpp std_msgs
 
 # Examine the generated structure
 tree my_first_cpp/
@@ -240,29 +234,26 @@ From Module 1, we learned that Publisher/Subscriber is used for:
 #### Step 1: Python Publisher (Talker)
 
 ```python
-# File: my_first_package/my_first_package/talker.py
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from std_msgs.msg import String
 
 
-class TalkerLogic:
+class Talker:
     def __init__(self, node: Node):
         self.node = node
         self.counter = 0
 
-        # Create publisher
-        self.publisher = self.node.create_publisher(String, 'chatter', 10)
+        self.publisher = self.node.create_publisher(String, "talker", 10)
 
-        # Create timer for periodic publishing
         self.timer = self.node.create_timer(1.0, self.timer_callback)
 
-        self.node.get_logger().info('Talker logic initialized')
+        self.node.get_logger().info("Talker initialized")
 
     def timer_callback(self):
-        # Create and publish message
         msg = String()
-        msg.data = f'Hello ROS2! Count: {self.counter}'
+        msg.data = f"Hello! Count: {self.counter}"
 
         self.publisher.publish(msg)
         self.node.get_logger().info(f'Published: "{msg.data}"')
@@ -272,44 +263,41 @@ class TalkerLogic:
 
 def main(args=None):
     rclpy.init(args=args)
-    node = Node('talker')
-    talker_logic = TalkerLogic(node)
+
+    node = Node("talker")
+    _ = Talker(node)
 
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
 ```
 
 #### Step 2: Python Subscriber (Listener)
 
 ```python
-# File: my_first_package/my_first_package/listener.py
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from std_msgs.msg import String
 
 
-class ListenerLogic:
+class Listener:
     def __init__(self, node: Node):
         self.node = node
 
-        # Create subscriber
         self.subscription = self.node.create_subscription(
-            String,
-            'chatter',
-            self.listener_callback,
-            10
+            String, "talker", self.listener_callback, 10
         )
 
-        self.node.get_logger().info('Listener logic initialized')
+        self.node.get_logger().info("Listener initialized")
 
     def listener_callback(self, msg):
         self.node.get_logger().info(f'Received: "{msg.data}"')
@@ -317,19 +305,20 @@ class ListenerLogic:
 
 def main(args=None):
     rclpy.init(args=args)
-    node = Node('listener')
-    listener_logic = ListenerLogic(node)
+
+    node = Node("listener")
+    _ = Listener(node)
 
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
 ```
 
@@ -359,8 +348,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'talker = my_first_package.talker:main',
-            'listener = my_first_package.listener:main',
+            "talker = my_first_py.talker:main",
+            "listener = my_first_py.listener:main",
         ],
     },
 )

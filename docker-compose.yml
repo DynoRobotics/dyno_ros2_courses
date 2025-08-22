@@ -8,12 +8,11 @@ services:
     # network_mode: host
     environment:
       SDL_VIDEODRIVER: x11
-      # DISPLAY: $DISPLAY
-      DISPLAY: host.docker.internal:0
+      DISPLAY: $DISPLAY
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /tmp/.X11-unix:/tmp/.X11-unix
-      - ./:/home/ros/ws
+      - ./:/home/ubuntu/ws
     stdin_open: true
     privileged: true
     group_add:
@@ -21,5 +20,3 @@ services:
     tty: true
     command: tail -f /dev/null
     restart: always
-    ports:
-      - "5901:5901"

@@ -1,0 +1,13 @@
+# Move action: Moves the robot forward or backward by a specified distance
+# goal definition
+float64 distance     # Distance to move in meters (positive = forward, negative = backward)
+float64 speed        # Speed in m/s (optional, default will be 0.5)
+bool use_speed       # Whether to use the specified speed or default speed
+---
+# result definition
+float64 total_time_sec      # Total time taken to complete the movement
+float64 distance_traveled   # Actual distance traveled in meters
+---
+# feedback
+float64 progress           # Progress from 0.0 to 1.0
+float64 current_distance   # Current distance traveled so far

@@ -1,0 +1,10 @@
+# Rotate action: Rotates the robot by a specified angle in degrees or radians
+# goal definition
+float64 delta_angle  # Angle to rotate (positive = clockwise, negative = counterclockwise)
+bool radians         # True if angle is in radians, false if in degrees
+---
+# result definition
+float64 total_time_sec  # Total time taken to complete the rotation
+---
+# feedback
+float64 progress       # Progress from 0.0 to 1.0

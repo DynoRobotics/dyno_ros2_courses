@@ -46,15 +46,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   ros-jazzy-rmw-zenoh-cpp \
   && rm -rf /var/lib/apt/lists/*
 
-ENV ROS_DISTRO=jazzy
-ENV AMENT_PREFIX_PATH=/opt/ros/jazzy
-ENV COLCON_PREFIX_PATH=/opt/ros/jazzy
-ENV LD_LIBRARY_PATH=/opt/ros/jazzy/lib
-ENV PATH=/opt/ros/jazzy/bin:$PATH
-ENV PYTHONPATH=/opt/ros/jazzy/lib/python3.10/site-packages
-ENV ROS_PYTHON_VERSION=3
-ENV ROS_VERSION=2
-ENV DEBIAN_FRONTEND=
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -72,49 +63,37 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   vim \
   ranger \
   htop \
+  tree \
   && rm -rf /var/lib/apt/lists/*
 
-RUN rosdep init || echo "rosdep already initialized"
+  
+# Make default user not need sudo password
+ARG USERNAME=ubuntu
+RUN apt-get update \
+&& apt-get install -y sudo \
+&& echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME \
+&& chmod 0440 /etc/sudoers.d/$USERNAME \
+&& rm -rf /var/lib/apt/lists/*
 
-ARG USERNAME=ros
-ARG USER_UID=1001
-ARG USER_GID=$USER_UID
+USER $USERNAME
 
-# Create a non-root user
-
-RUN if ! getent group $USER_GID; then groupadd -g $USER_GID $USERNAME; fi \
-  && if ! id -u $USER_UID >/dev/null 2>&1; then \
-  useradd -m -u $USER_UID -g $USER_GID -s /bin/bash $USERNAME; \
-  fi \
-  && apt-get update \
-  && apt-get install -y sudo \
-  && echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME \
-  && chmod 0440 /etc/sudoers.d/$USERNAME \
-  && rm -rf /var/lib/apt/lists/*
+ENV ROS_DISTRO=jazzy
+ENV AMENT_PREFIX_PATH=/opt/ros/jazzy
+ENV COLCON_PREFIX_PATH=/opt/ros/jazzy
+ENV LD_LIBRARY_PATH=/opt/ros/jazzy/lib
+ENV PATH=/opt/ros/jazzy/bin:$PATH
+ENV PYTHONPATH=/opt/ros/jazzy/lib/python3.10/site-packages
+ENV ROS_PYTHON_VERSION=3
+ENV ROS_VERSION=2
+ENV DEBIAN_FRONTEND=
 
 # Set up autocompletion for user
-RUN apt-get update && apt-get install -y git bash-completion \
-  && echo "if [ -f /opt/ros/${ROS_DISTRO}/setup.bash ]; then source /opt/ros/${ROS_DISTRO}/setup.bash; fi" >> /home/$USERNAME/.bashrc \
-  && echo "if [ -f /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash ]; then source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash; fi" >> /home/$USERNAME/.bashrc \
-  && rm -rf /var/lib/apt/lists/*
+RUN sudo apt-get update && sudo apt-get install -y git bash-completion \
+&& echo "if [ -f /opt/ros/${ROS_DISTRO}/setup.bash ]; then source /opt/ros/${ROS_DISTRO}/setup.bash; fi" >> /home/$USERNAME/.bashrc \
+&& echo "if [ -f /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash ]; then source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash; fi" >> /home/$USERNAME/.bashrc \
+&& sudo rm -rf /var/lib/apt/lists/*
 
-# Install Mesa for software OpenGL
-RUN apt-get update && apt-get install -y \
-    mesa-utils \
-    libgl1 \
-    libglx-mesa0 \
-    libgl1-mesa-dri \
-    libglu1-mesa \
-    && rm -rf /var/lib/apt/lists/*
-
-# Optional: Install TurboVNC for fast rendering
-RUN apt-get update && apt-get install -y \
-    xvfb \
-    x11vnc \
-    fluxbox \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN adduser ros dialout
+RUN sudo adduser ubuntu dialout
 
 ENV DEBIAN_FRONTEND=
 ENV AMENT_CPPCHECK_ALLOW_SLOW_VERSIONS=1
@@ -122,7 +101,7 @@ ENV AMENT_CPPCHECK_ALLOW_SLOW_VERSIONS=1
 ARG WORKSPACE=/home/${USERNAME}
 
 ENV DEPENDENCIES_WS /opt/dependencies_ws
-RUN mkdir -p $DEPENDENCIES_WS/src
+RUN sudo mkdir -p $DEPENDENCIES_WS/src
 
 ENV HOME=/home/${USERNAME}
 ENV WS=${WORKSPACE}
@@ -130,15 +109,17 @@ ENV WS=${WORKSPACE}
 ARG CMAKE_BUILD_TYPE=RelWithDebInfo
 
 # Build ROS 2 source dependencies
+RUN sudo rosdep init || echo "rosdep already initialized"
+
 WORKDIR $DEPENDENCIES_WS
 COPY ros_dependencies.repos ros_dependencies.repos
-RUN vcs import src < ros_dependencies.repos
-RUN apt-get update && \
+RUN sudo vcs import src < ros_dependencies.repos
+RUN bash -c "sudo apt-get update && \
   rosdep update && \
   rosdep install -q -y --from-paths src --ignore-src && \
-  rm -rf /var/likb/apt/lists/*
+  sudo rm -rf /var/likb/apt/lists/*"
 
-RUN . /opt/ros/jazzy/setup.sh && colcon build --merge-install --cmake-args -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE
+RUN sudo bash -c ". /opt/ros/jazzy/setup.bash && colcon build --merge-install --cmake-args -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE"
 
 # Install PIP requirements
 COPY requirements.txt /tmp/
@@ -153,23 +134,25 @@ RUN mkdir ws
 # Install ros dependencies
 COPY --chown=$USERNAME . ws
 
-RUN apt-get update && \
-  . $DEPENDENCIES_WS/install/setup.sh && \
-  rosdep update && \
-  rosdep install --from-paths ws/src --ignore-src -y && \
-  rm -rf /var/lib/apt/lists/*
-
 USER $USERNAME
 
-RUN sudo chown -R ros:ros /home/ros
+RUN bash -c "sudo apt-get update && \
+  . $DEPENDENCIES_WS/install/setup.bash && \
+  export PIP_BREAK_SYSTEM_PACKAGES=1 && \
+  rosdep update && \
+  rosdep install --from-paths ws/src --ignore-src -y && \
+  sudo rm -rf /var/lib/apt/lists/*"
 
 # Build ros2 workspace
-RUN /bin/bash -c 'source $DEPENDENCIES_WS/install/setup.bash && cd /home/ros && colcon build --merge-install --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE'
+RUN /bin/bash -c 'source $DEPENDENCIES_WS/install/setup.bash && cd /home/ubuntu && colcon build --merge-install --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE'
 
 # Add source to bashrc
-RUN echo "if [ -f /home/ros/install/setup.bash ]; then source /home/ros/install/setup.bash; fi" >> /home/ros/.bashrc
-RUN echo "if [ -f $DEPENDENCIES_WS/install/setup.bash ]; then source $DEPENDENCIES_WS/install/setup.bash; fi" >> /home/ros/.bashrc
+RUN echo "if [ -f /home/ubuntu/install/setup.bash ]; then source /home/ubuntu/install/setup.bash; fi" >> /home/ubuntu/.bashrc
+RUN echo "if [ -f $DEPENDENCIES_WS/install/setup.bash ]; then source $DEPENDENCIES_WS/install/setup.bash; fi" >> /home/ubuntu/.bashrc
 RUN echo "if [ -f ${WS}/ws/run-completion ]; then source ${WS}/ws/run-completion; fi" >> ${HOME}/.bashrc
 
-RUN echo "export RCUTILS_COLORIZED_OUTPUT=1" >> /home/ros/.bashrc
-RUN echo "export RMW_IMPLEMENTATION=rmw_zenoh_cpp" >> /home/ros/.bashrc
+RUN echo "export RCUTILS_COLORIZED_OUTPUT=1" >> /home/ubuntu/.bashrc
+RUN echo "export RMW_IMPLEMENTATION=rmw_zenoh_cpp" >> /home/ubuntu/.bashrc
+
+RUN echo "alias zenohd='ros2 run rmw_zenoh_cpp rmw_zenohd'" >> /home/ubuntu/.bashrc
+RUN echo "export PIP_BREAK_SYSTEM_PACKAGES=1" >> /home/ubuntu/.bashrc
