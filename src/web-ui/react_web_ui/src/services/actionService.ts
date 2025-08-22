@@ -41,8 +41,9 @@ export interface GoalStatus {
     goal_id: string;
     action_name: string;
     action_type: string;
-    status: 'pending' | 'accepted' | 'rejected' | 'error';
+    status: string;
     error?: string;
+    feedback?: Record<string, string>;
 }
 
 export interface ActiveGoalsResponse {

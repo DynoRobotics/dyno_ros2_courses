@@ -587,8 +587,36 @@ class ROS2ActionManager(Node):
             # Generate unique goal ID
             goal_id = str(uuid.uuid4())
 
-            # Send the goal asynchronously
-            future = client.send_goal_async(goal_msg)
+            # Create feedback callback function for this specific goal
+            def feedback_callback(feedback_msg):
+                try:
+                    self.logger.debug(
+                        f"Received feedback for goal {goal_id}: {feedback_msg.feedback}"
+                    )
+
+                    # Extract feedback data from the message
+                    feedback_data = self._extract_feedback_data(
+                        feedback_msg.feedback, action_type
+                    )
+
+                    # Store latest feedback in goal info if goal still exists
+                    if goal_id in self._active_goals:
+                        self._active_goals[goal_id]["latest_feedback"] = feedback_data
+
+                        # Emit feedback event via WebSocket
+                        self._schedule_async_task(
+                            self._emit_goal_feedback(goal_id, feedback_data)
+                        )
+
+                except Exception as e:
+                    self.logger.warning(
+                        f"Error in feedback callback for goal {goal_id}: {e}"
+                    )
+
+            # Send the goal asynchronously WITH feedback callback
+            future = client.send_goal_async(
+                goal_msg, feedback_callback=feedback_callback
+            )
 
             # Store the goal for tracking
             self._active_goals[goal_id] = {
@@ -600,7 +628,9 @@ class ROS2ActionManager(Node):
                 "status": "pending",
             }
 
-            self.logger.info(f"Sent goal {goal_id} to action {action_name}")
+            self.logger.info(
+                f"Sent goal {goal_id} to action {action_name} with feedback callback"
+            )
 
             # Broadcast goal added event
             await self._emit_goal_added(goal_id)
@@ -626,13 +656,8 @@ class ROS2ActionManager(Node):
                     }
                     await self._emit_goal_update(status)
 
-                    # Attach callback to handle goal completion
-                    if hasattr(goal_handle, "get_result_async"):
-                        result_future = goal_handle.get_result_async()
-                        self._active_goals[goal_id]["result_future"] = result_future
-                        result_future.add_done_callback(
-                            lambda f: self._handle_goal_completion(goal_id, f)
-                        )
+                    # Set up result callback for completion handling
+                    self._setup_result_callback(goal_id, goal_handle)
 
                     return {"goal_id": goal_id, "accepted": True, "status": "accepted"}
                 else:
@@ -749,6 +774,88 @@ class ROS2ActionManager(Node):
             await self.event_bus.broadcast("goal_removed", {"goal_id": goal_id})
         except Exception as e:
             self.logger.warning(f"Failed to emit goal_removed event: {e}")
+
+    async def _emit_goal_feedback(self, goal_id: str, feedback_data: Dict[str, Any]):
+        """Emit WebSocket event when goal feedback is received"""
+        try:
+            feedback_event = {"goal_id": goal_id, "feedback": feedback_data}
+            await self.event_bus.broadcast("goal_feedback", feedback_event)
+        except Exception as e:
+            self.logger.warning(f"Failed to emit goal_feedback event: {e}")
+
+    def _setup_result_callback(self, goal_id: str, goal_handle):
+        """Set up result callback for goal completion handling"""
+        try:
+            if goal_id not in self._active_goals:
+                self.logger.warning(
+                    f"Goal {goal_id} not found when setting up result callback"
+                )
+                return
+
+            # Set up result future and callbacks
+            if hasattr(goal_handle, "get_result_async"):
+                result_future = goal_handle.get_result_async()
+                self._active_goals[goal_id]["result_future"] = result_future
+
+                # Set up result completion callback
+                result_future.add_done_callback(
+                    lambda f: self._handle_goal_completion(goal_id, f)
+                )
+
+                self.logger.info(f"Set up result callback for goal {goal_id}")
+
+            else:
+                self.logger.warning(
+                    f"Goal handle for {goal_id} does not support get_result_async"
+                )
+
+        except Exception as e:
+            self.logger.error(
+                f"Error setting up result callback for goal {goal_id}: {e}"
+            )
+
+    def _extract_feedback_data(self, feedback_msg, action_type: str) -> Dict[str, Any]:
+        """Extract feedback data from ROS2 feedback message"""
+        try:
+            feedback_data = {}
+
+            # Common feedback fields that most actions provide
+            if hasattr(feedback_msg, "progress"):
+                # Convert progress to percentage for display
+                progress_value = float(feedback_msg.progress)
+                feedback_data["progress"] = f"{progress_value * 100:.1f}%"
+
+            # Action-specific feedback extraction
+            if "Move" in action_type:
+                if hasattr(feedback_msg, "current_distance"):
+                    feedback_data["current_distance"] = (
+                        f"{float(feedback_msg.current_distance):.2f}m"
+                    )
+
+            elif "Rotate" in action_type:
+                # Rotate action typically only has progress
+                pass
+
+            # Add any other feedback fields dynamically
+            for attr_name in dir(feedback_msg):
+                if not attr_name.startswith("_") and attr_name not in [
+                    "progress",
+                    "current_distance",
+                ]:
+                    try:
+                        attr_value = getattr(feedback_msg, attr_name)
+                        # Only include simple types that can be serialized
+                        if isinstance(attr_value, (int, float, str, bool)):
+                            feedback_data[attr_name] = str(attr_value)
+                    except Exception:
+                        # Skip attributes that can't be accessed
+                        pass
+
+            return feedback_data
+
+        except Exception as e:
+            self.logger.warning(f"Error extracting feedback data: {e}")
+            return {}
 
     def _handle_goal_response(self, goal_id: str, future):
         """Handle goal acceptance/rejection response"""
@@ -1019,7 +1126,9 @@ class ROS2ActionManager(Node):
         # Build status from stored information
         status = {
             "goal_id": goal_id,
-            "action_name": goal_info["action_name"],
+            "action_name": goal_info[
+                "action_name"
+            ],  # This is the full ROS2 action name like "/turtle1/move"
             "action_type": goal_info["action_type"],
             "status": goal_info.get("status", "pending"),
         }
@@ -1027,6 +1136,10 @@ class ROS2ActionManager(Node):
         # Add error information if present
         if "error" in goal_info:
             status["error"] = goal_info["error"]
+
+        # Add feedback if present
+        if "latest_feedback" in goal_info:
+            status["feedback"] = goal_info["latest_feedback"]
 
         return status
 

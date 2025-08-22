@@ -53,6 +53,7 @@ const ActionManager: React.FC<ActionManagerProps> = ({
     const [sendingGoal, setSendingGoal] = useState<boolean>(false);
     const [activeGoals, setActiveGoals] = useState<GoalStatus[]>([]);
     const [cancellingGoals, setCancellingGoals] = useState<Set<string>>(new Set());
+    const [feedbackVisible, setFeedbackVisible] = useState<Set<string>>(new Set());
     const toast = useToast();
 
     // WebSocket connection
@@ -115,6 +116,22 @@ const ActionManager: React.FC<ActionManagerProps> = ({
         setActiveGoals(data);
     }, []);
 
+    const handleGoalFeedback = useCallback((data: { goal_id: string; feedback: Record<string, string> }) => {
+        setActiveGoals(prev => {
+            const existingIndex = prev.findIndex(goal => goal.goal_id === data.goal_id);
+            if (existingIndex >= 0) {
+                // Update existing goal with new feedback
+                const updated = [...prev];
+                updated[existingIndex] = {
+                    ...updated[existingIndex],
+                    feedback: data.feedback
+                };
+                return updated;
+            }
+            return prev;
+        });
+    }, []);
+
     // Fetch actions from API on component mount
     useEffect(() => {
         const fetchActions = async () => {
@@ -153,6 +170,7 @@ const ActionManager: React.FC<ActionManagerProps> = ({
         subscribe('goal_added', handleGoalAdded);
         subscribe('goal_removed', handleGoalRemoved);
         subscribe('goals_snapshot', handleGoalsSnapshot);
+        subscribe('goal_feedback', handleGoalFeedback);
 
         return () => {
             // Unsubscribe when component unmounts
@@ -160,8 +178,9 @@ const ActionManager: React.FC<ActionManagerProps> = ({
             unsubscribe('goal_added', handleGoalAdded);
             unsubscribe('goal_removed', handleGoalRemoved);
             unsubscribe('goals_snapshot', handleGoalsSnapshot);
+            unsubscribe('goal_feedback', handleGoalFeedback);
         };
-    }, [subscribe, unsubscribe, handleGoalUpdate, handleGoalAdded, handleGoalRemoved, handleGoalsSnapshot]);
+    }, [subscribe, unsubscribe, handleGoalUpdate, handleGoalAdded, handleGoalRemoved, handleGoalsSnapshot, handleGoalFeedback]);
 
     const handleCancelGoal = async (goalId: string) => {
         try {
@@ -689,9 +708,6 @@ const ActionManager: React.FC<ActionManagerProps> = ({
                                         <VStack align="stretch" spacing={1}>
                                             <HStack justify="space-between" align="center">
                                                 <VStack align="start" spacing={0} flex="1">
-                                                    <Text fontSize="xs" fontWeight="semibold">
-                                                        {selectedAction}
-                                                    </Text>
                                                     <Text fontSize="xs" color="gray.600">
                                                         ID: {goal.goal_id.substring(0, 8)}...
                                                     </Text>
@@ -708,6 +724,27 @@ const ActionManager: React.FC<ActionManagerProps> = ({
                                                     >
                                                         {goal.status}
                                                     </Badge>
+                                                    {/* Show feedback toggle for accepted goals, regardless of current feedback availability */}
+                                                    {goal.status === 'accepted' && (
+                                                        <Button
+                                                            size="xs"
+                                                            colorScheme="blue"
+                                                            variant="outline"
+                                                            onClick={() => {
+                                                                setFeedbackVisible(prev => {
+                                                                    const newSet = new Set(prev);
+                                                                    if (newSet.has(goal.goal_id)) {
+                                                                        newSet.delete(goal.goal_id);
+                                                                    } else {
+                                                                        newSet.add(goal.goal_id);
+                                                                    }
+                                                                    return newSet;
+                                                                });
+                                                            }}
+                                                        >
+                                                            {feedbackVisible.has(goal.goal_id) ? 'Hide' : 'Show'} Feedback
+                                                        </Button>
+                                                    )}
                                                     <Button
                                                         size="xs"
                                                         colorScheme="red"
@@ -724,6 +761,68 @@ const ActionManager: React.FC<ActionManagerProps> = ({
                                                 <Text fontSize="xs" color="red.500">
                                                     Error: {goal.error}
                                                 </Text>
+                                            )}
+                                            {feedbackVisible.has(goal.goal_id) && (
+                                                <Box
+                                                    mt={2}
+                                                    p={2}
+                                                    bg="blue.50"
+                                                    borderRadius="md"
+                                                    border="1px solid"
+                                                    borderColor="blue.200"
+                                                    sx={{
+                                                        _dark: {
+                                                            bg: "blue.900",
+                                                            borderColor: "blue.700"
+                                                        }
+                                                    }}
+                                                >
+                                                    <Text fontSize="xs" fontWeight="semibold" color="blue.700" mb={1}
+                                                        sx={{
+                                                            _dark: {
+                                                                color: "blue.300"
+                                                            }
+                                                        }}
+                                                    >
+                                                        Real-time Feedback:
+                                                    </Text>
+                                                    {goal.feedback && Object.keys(goal.feedback).length > 0 ? (
+                                                        <VStack align="start" spacing={1}>
+                                                            {Object.entries(goal.feedback).map(([key, value]) => (
+                                                                <HStack key={key} spacing={2}>
+                                                                    <Text fontSize="xs" fontWeight="medium" color="gray.600"
+                                                                        sx={{
+                                                                            _dark: {
+                                                                                color: "gray.300"
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        {key}:
+                                                                    </Text>
+                                                                    <Text fontSize="xs" color="gray.800"
+                                                                        sx={{
+                                                                            _dark: {
+                                                                                color: "gray.100"
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        {value}
+                                                                    </Text>
+                                                                </HStack>
+                                                            ))}
+                                                        </VStack>
+                                                    ) : (
+                                                        <Text fontSize="xs" color="gray.500" fontStyle="italic"
+                                                            sx={{
+                                                                _dark: {
+                                                                    color: "gray.400"
+                                                                }
+                                                            }}
+                                                        >
+                                                            Waiting for feedback from action server...
+                                                        </Text>
+                                                    )}
+                                                </Box>
                                             )}
                                         </VStack>
                                     </Box>
