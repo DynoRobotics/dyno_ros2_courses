@@ -20,6 +20,16 @@ class Localization:
         self.node = node
         self.logger = self.node.get_logger()
 
+        # Declare parameters
+        self.node.declare_parameter("tf_publish_rate", 50.0)  # Hz
+
+        # Get parameters
+        self.tf_publish_rate = (
+            self.node.get_parameter("tf_publish_rate")
+            .get_parameter_value()
+            .double_value
+        )
+
         # Get namespace and create frame names
         self.namespace = self.node.get_namespace().strip("/")
         if self.namespace:
@@ -28,6 +38,9 @@ class Localization:
             self.child_frame = "turtle1_link"
 
         self.parent_frame = "map"
+
+        # Store latest pose for timer-based TF publishing
+        self.latest_pose = None
 
         # Create publishers
         self.pose_publisher = self.node.create_publisher(PoseStamped, "pose3d", 10)
@@ -43,9 +56,15 @@ class Localization:
             10,
         )
 
+        # Create timer for high-rate TF publishing
+        self.tf_timer = self.node.create_timer(
+            1.0 / self.tf_publish_rate, self.tf_timer_callback
+        )
+
         self.logger.info(f"Localization node started")
         self.logger.info(f"Namespace: {self.namespace}")
         self.logger.info(f"Child frame: {self.child_frame}")
+        self.logger.info(f"TF publish rate: {self.tf_publish_rate} Hz")
         self.logger.info(f"Publishing pose3d on: {self.node.get_name()}/pose3d")
         self.logger.info(
             f"Publishing transform: {self.parent_frame} -> {self.child_frame}"
@@ -54,9 +73,12 @@ class Localization:
     def pose_callback(self, msg: Pose):
         """
         Callback for turtlesim pose messages.
-        Publishes both PoseStamped and Transform messages.
+        Stores latest pose and publishes PoseStamped message.
         """
         current_time = self.node.get_clock().now()
+
+        # Store latest pose for timer-based TF publishing
+        self.latest_pose = msg
 
         # Create and publish PoseStamped message
         pose_stamped = PoseStamped()
@@ -76,6 +98,19 @@ class Localization:
         # Publish pose
         self.pose_publisher.publish(pose_stamped)
 
+    def tf_timer_callback(self):
+        """
+        Timer callback for high-rate TF publishing.
+        Publishes transform at consistent rate using latest pose data.
+        """
+        if self.latest_pose is None:
+            return
+
+        current_time = self.node.get_clock().now()
+
+        # Convert theta to quaternion
+        quat = quaternion_from_euler(0, 0, self.latest_pose.theta)
+
         # Create and publish transform
         transform = TransformStamped()
         transform.header.stamp = current_time.to_msg()
@@ -83,11 +118,11 @@ class Localization:
         transform.child_frame_id = self.child_frame
 
         # Set translation
-        transform.transform.translation.x = msg.x
-        transform.transform.translation.y = msg.y
+        transform.transform.translation.x = self.latest_pose.x
+        transform.transform.translation.y = self.latest_pose.y
         transform.transform.translation.z = 0.0
 
-        # Set rotation (same quaternion as pose)
+        # Set rotation
         transform.transform.rotation = quat
 
         # Broadcast transform

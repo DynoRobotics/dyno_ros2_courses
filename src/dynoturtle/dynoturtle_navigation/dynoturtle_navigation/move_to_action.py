@@ -229,10 +229,38 @@ class MoveToAction:
                     distance_to_target = self.calculate_distance(
                         self.current_pose, self.target_pose
                     )
-                    self.logger.error(
-                        f"MoveTo action failed to reach target pose. Distance to target: {distance_to_target:.3f}m (tolerance: {self.position_tolerance}m)"
-                    )
-                    raise Exception("Failed to reach target pose within tolerance")
+
+                    # Retry once if the first attempt was too far off
+                    retry_threshold = self.position_tolerance
+                    if distance_to_target > retry_threshold:
+                        self.logger.warn(
+                            f"First attempt too far off target (distance: {distance_to_target:.3f}m > threshold: {retry_threshold:.3f}m). Retrying once..."
+                        )
+
+                        # Retry navigation once
+                        retry_distance = await self.navigate_to_target(
+                            speed, goal_handle
+                        )
+                        distance_traveled += retry_distance
+
+                        # Check again after retry
+                        if not self.has_reached_target():
+                            final_distance_to_target = self.calculate_distance(
+                                self.current_pose, self.target_pose
+                            )
+                            self.logger.error(
+                                f"MoveTo action failed to reach target pose after retry. Distance to target: {final_distance_to_target:.3f}m (tolerance: {self.position_tolerance}m)"
+                            )
+                            raise Exception(
+                                "Failed to reach target pose within tolerance after retry"
+                            )
+                        else:
+                            self.logger.info("Retry successful - target pose reached!")
+                    else:
+                        self.logger.error(
+                            f"MoveTo action failed to reach target pose. Distance to target: {distance_to_target:.3f}m (tolerance: {self.position_tolerance}m)"
+                        )
+                        raise Exception("Failed to reach target pose within tolerance")
 
         except Exception as e:
             self.logger.error(f"MoveTo action failed: {e}")
@@ -279,94 +307,151 @@ class MoveToAction:
             rotate_goal.radians = True
             rotate_goal.use_speed = False  # Use default rotation speed
 
-            # Send rotate goal
+            # Send rotate goal and wait for acceptance
+            self.logger.info(f"Sending rotation goal: {angle_diff:.3f} radians")
             rotate_future = self.rotate_client.send_goal_async(rotate_goal)
-
-            # Wait for goal to be accepted
             rotate_goal_handle = await rotate_future
+
             if not rotate_goal_handle.accepted:
                 raise Exception("Rotate goal was rejected")
 
-            # Wait for rotation to complete while providing feedback
-            while not rotate_goal_handle.result_future.done():
-                await async_sleep(self.node, 0.1)
-
-                if goal_handle.is_cancel_requested:
-                    # Cancel the rotate action
-                    await rotate_goal_handle.cancel_goal_async()
-                    return 0.0
-
-                # Update feedback (rotation phase is 0-25% of total progress)
-                feedback_msg.progress = 0.125  # Mid-point of rotation phase
-                feedback_msg.current_distance = 0.0
-                goal_handle.publish_feedback(feedback_msg)
-
-            # Get rotation result
+            # Wait for rotation to complete with proper synchronization
+            self.logger.info("Waiting for rotation to complete...")
             rotate_result = await rotate_goal_handle.get_result_async()
+
             if rotate_result.status != 4:  # SUCCEEDED
                 raise Exception(f"Rotation failed with status: {rotate_result.status}")
 
-            self.logger.info("Rotation completed")
+            self.logger.info("Phase 1 completed: Rotation finished successfully")
+        else:
+            self.logger.info("Phase 1 skipped: Already facing target within tolerance")
 
-        # Phase 2: Move forward to target
+        # Phase 2: Move forward to target with chunking and course correction
         self.logger.info("Phase 2: Moving to target position")
 
-        # Calculate distance to move
-        distance_to_move = self.calculate_distance(self.current_pose, self.target_pose)
+        movement_start_pose = SimplePose(
+            x=self.current_pose.x, y=self.current_pose.y, theta=self.current_pose.theta
+        )
 
-        if distance_to_move > self.position_tolerance:
-            # Create move goal
-            move_goal = Move.Goal()
-            move_goal.distance = distance_to_move
-            move_goal.speed = speed
-            move_goal.use_speed = True
+        # Constants for chunking and iteration
+        max_move_distance = 9.5  # Slightly less than 10.0m limit for safety
+        max_iterations = 5
+        iteration = 0
+        total_distance_moved = 0.0
 
-            # Send move goal
-            move_future = self.move_client.send_goal_async(move_goal)
+        while iteration < max_iterations and not self.has_reached_target():
+            if goal_handle.is_cancel_requested:
+                break
 
-            # Wait for goal to be accepted
-            move_goal_handle = await move_future
-            if not move_goal_handle.accepted:
-                raise Exception("Move goal was rejected")
+            # Recalculate distance and angle to target
+            distance_to_move = self.calculate_distance(
+                self.current_pose, self.target_pose
+            )
 
-            # Wait for movement to complete while providing feedback
-            while not move_goal_handle.result_future.done():
-                await async_sleep(self.node, 0.1)
+            if distance_to_move <= self.position_tolerance:
+                self.logger.info("Target reached within tolerance")
+                break
 
-                if goal_handle.is_cancel_requested:
-                    # Cancel the move action
-                    await move_goal_handle.cancel_goal_async()
-                    break
+            # Check if we need to rotate again (course correction)
+            target_angle = self.calculate_angle_to_target(
+                self.current_pose, self.target_pose
+            )
+            angle_diff = self.angle_difference(target_angle, self.current_pose.theta)
 
-                # Get current distance traveled
-                current_distance = self.calculate_distance(
-                    self.start_pose, self.current_pose
+            if abs(angle_diff) > self.angle_tolerance:
+                self.logger.info(
+                    f"Course correction needed: rotating {angle_diff:.3f} radians"
                 )
 
-                # Update feedback (movement phase is 25-100% of total progress)
+                # Create rotate goal for course correction
+                rotate_goal = Rotate.Goal()
+                rotate_goal.delta_angle = angle_diff
+                rotate_goal.radians = True
+                rotate_goal.use_speed = False
+
+                # Send rotate goal and wait for completion
+                rotate_future = self.rotate_client.send_goal_async(rotate_goal)
+                rotate_goal_handle = await rotate_future
+
+                if rotate_goal_handle.accepted:
+                    rotate_result = await rotate_goal_handle.get_result_async()
+                    if rotate_result.status == 4:  # SUCCEEDED
+                        self.logger.info("Course correction completed")
+                    else:
+                        self.logger.warn(
+                            f"Course correction failed with status: {rotate_result.status}"
+                        )
+                else:
+                    self.logger.warn("Course correction rotate goal rejected")
+
+            # Recalculate distance after potential course correction
+            distance_to_move = self.calculate_distance(
+                self.current_pose, self.target_pose
+            )
+
+            if distance_to_move > self.position_tolerance:
+                # Implement chunking for distances > max_move_distance
+                chunk_distance = min(distance_to_move, max_move_distance)
+
+                self.logger.info(
+                    f"Moving {chunk_distance:.3f}m (of {distance_to_move:.3f}m remaining) on iteration {iteration + 1}"
+                )
+
+                # Create move goal with chunked distance
+                move_goal = Move.Goal()
+                move_goal.distance = chunk_distance
+                move_goal.speed = speed
+                move_goal.use_speed = True
+
+                # Send move goal and wait for acceptance
+                move_future = self.move_client.send_goal_async(move_goal)
+                move_goal_handle = await move_future
+
+                if not move_goal_handle.accepted:
+                    self.logger.warn(f"Move goal rejected on iteration {iteration + 1}")
+                    break
+
+                # Wait for movement to complete with proper synchronization
+                move_result = await move_goal_handle.get_result_async()
+
+                if move_result.status == 4:  # SUCCEEDED
+                    moved_distance = move_result.result.distance_traveled
+                    total_distance_moved += abs(moved_distance)
+                    self.logger.info(
+                        f"Movement iteration {iteration + 1} completed: moved {moved_distance:.3f}m"
+                    )
+                else:
+                    self.logger.warn(
+                        f"Movement iteration {iteration + 1} failed with status: {move_result.status}"
+                    )
+                    # Continue to next iteration instead of failing immediately
+
+                # Update feedback
                 if total_distance > 0:
+                    current_distance = self.calculate_distance(
+                        self.start_pose, self.current_pose
+                    )
                     movement_progress = min(1.0, current_distance / total_distance)
                     feedback_msg.progress = 0.25 + (0.75 * movement_progress)
-                else:
-                    feedback_msg.progress = 1.0
+                    feedback_msg.current_distance = current_distance
+                    goal_handle.publish_feedback(feedback_msg)
 
-                feedback_msg.current_distance = current_distance
-                goal_handle.publish_feedback(feedback_msg)
-
-            # Get movement result
-            if not goal_handle.is_cancel_requested:
-                move_result = await move_goal_handle.get_result_async()
-                if move_result.status != 4:  # SUCCEEDED
-                    raise Exception(
-                        f"Movement failed with status: {move_result.status}"
-                    )
-
-                self.logger.info("Movement completed")
-                return move_result.result.distance_traveled
+            iteration += 1
 
         # Calculate final distance traveled
-        final_distance = self.calculate_distance(self.start_pose, self.current_pose)
-        return final_distance
+        final_distance = self.calculate_distance(movement_start_pose, self.current_pose)
+
+        if self.has_reached_target():
+            self.logger.info("Target reached successfully")
+            return final_distance
+        else:
+            distance_to_target = self.calculate_distance(
+                self.current_pose, self.target_pose
+            )
+            self.logger.warn(
+                f"Target not reached after {max_iterations} iterations. Distance remaining: {distance_to_target:.3f}m"
+            )
+            return final_distance
 
 
 def main(args=None, namespace=""):

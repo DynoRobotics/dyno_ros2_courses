@@ -34,14 +34,12 @@ def generate_launch_description():
         package="dynoturtle_behaviors", executable="rotate_action", name="rotate_action"
     )
 
-    move_to_action = Node(
-        package="dynoturtle_navigation",
-        executable="move_to_action",
-        name="move_to_action",
+    charge_action = Node(
+        package="dynoturtle_behaviors", executable="charge_action", name="charge_action"
     )
 
     behavior_tree = Node(
-        package="dynoturtle_behaviors", executable="simple_tree", name="simple_tree"
+        package="dynoturtle_behaviors", executable="charge_tree", name="main_tree"
     )
 
     return LaunchDescription(
@@ -51,7 +49,7 @@ def generate_launch_description():
             navigation,
             move_action,
             rotate_action,
-            move_to_action,
+            charge_action,
             behavior_tree,
         ]
     )

@@ -414,7 +414,7 @@ class BatterySimulator:
         # Declare battery-specific parameters
         self.node.declare_parameter("battery_initial_level", 100.0)
         self.node.declare_parameter(
-            "battery_drain_rate_idle", 0.1
+            "battery_drain_rate_idle", 1.0
         )  # %/second when idle
         self.node.declare_parameter(
             "battery_drain_rate_moving", 0.5
@@ -422,7 +422,7 @@ class BatterySimulator:
         self.node.declare_parameter(
             "battery_drain_rate_rotating", 0.3
         )  # %/second when rotating
-        self.node.declare_parameter("battery_update_rate", 1.0)  # Hz
+        self.node.declare_parameter("battery_update_rate", 5.0)  # Hz
         self.node.declare_parameter("battery_low_threshold", 20.0)  # %
         self.node.declare_parameter("battery_critical_threshold", 10.0)  # %
         self.node.declare_parameter("charging_pad_x", 5.5)  # Center x position
@@ -843,12 +843,12 @@ class BatterySimulator:
             battery_level = self.battery_levels[turtle_name]
             battery_status = self.get_battery_status(battery_level)
 
-            if battery_status == "critical" and battery_level > 0:
-                self.logger.warn(
-                    f"{turtle_name} battery critical: {battery_level:.1f}%"
-                )
-            elif battery_status == "low":
-                self.logger.info(f"{turtle_name} battery low: {battery_level:.1f}%")
+            # if battery_status == "critical" and battery_level > 0:
+            #     self.logger.warn(
+            #         f"{turtle_name} battery critical: {battery_level:.1f}%"
+            #     )
+            # elif battery_status == "low":
+            #     self.logger.info(f"{turtle_name} battery low: {battery_level:.1f}%")
 
             # Publish battery level
             battery_msg = Float32()

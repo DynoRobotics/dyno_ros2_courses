@@ -1,0 +1,11 @@
+# Charge action: Waits for battery level to reach target threshold
+# goal definition
+float32 target_battery_level  # Target battery level (0.0 to 1.0, default 0.8)
+---
+# result definition
+float32 final_battery_level   # Final battery level when action completed
+float32 total_time_sec        # Total time taken to reach target
+---
+# feedback
+float32 current_battery_level # Current battery level (0.0 to 1.0)
+float32 progress              # Progress towards target (0.0 to 1.0)

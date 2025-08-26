@@ -21,7 +21,10 @@ setup(
         "console_scripts": [
             "rotate_action = dynoturtle_behaviors.actions.rotate_action:main",
             "move_action = dynoturtle_behaviors.actions.move_action:main",
+            "charge_action = dynoturtle_behaviors.actions.charge_action:main",
             "simple_tree = dynoturtle_behaviors.trees.simple_tree:main",
+            "random_tree = dynoturtle_behaviors.trees.random_tree:main",
+            "charge_tree = dynoturtle_behaviors.trees.charge_tree:main",
         ],
     },
 )

@@ -14,7 +14,7 @@ def create_root() -> py_trees.behaviour.Behaviour:
 
     # Root node
     root = py_trees.composites.Parallel(
-        name="Simple",
+        name="Random",
         policy=py_trees.common.ParallelPolicy.SuccessOnAll(synchronise=False),
     )
 
@@ -41,7 +41,7 @@ def create_root() -> py_trees.behaviour.Behaviour:
         action_type=Rotate,
         action_name="rotate",
         wait_for_server_timeout_sec=wait_for_server_timeout_sec,
-        action_goal=Rotate.Goal(delta_angle=-90.0),
+        action_goal=Rotate.Goal(delta_angle=-150.0),
     )
 
     move_forward = py_trees_ros.actions.ActionClient(
@@ -49,12 +49,12 @@ def create_root() -> py_trees.behaviour.Behaviour:
         action_type=Move,
         action_name="move",
         wait_for_server_timeout_sec=wait_for_server_timeout_sec,
-        action_goal=Move.Goal(distance=1.0),
+        action_goal=Move.Goal(distance=10.0, speed=1.5, use_speed=True),
     )
 
     # Other nodes
     is_start_mission_requested = py_trees.behaviours.CheckBlackboardVariableValue(
-        name="Start",
+        name="Start?",
         check=py_trees.common.ComparisonExpression(
             variable="start_mission", value=True, operator=operator.eq
         ),
@@ -70,11 +70,20 @@ def create_root() -> py_trees.behaviour.Behaviour:
     # Subtrees
     cancel_sequence = py_trees.composites.Sequence(name="CancelSequence", memory=False)
     main_sequence = py_trees.composites.Sequence(name="MainSequence", memory=True)
+    collision_fallback = py_trees.composites.Selector(
+        name="CollisionFallback", memory=True
+    )
+
+    # Decorators
+    repeat_random_walk = py_trees.decorators.Repeat(
+        name="Repeat", num_success=-1, child=collision_fallback
+    )
 
     # Assemble tree
     root.add_child(topics_2bb)
     topics_2bb.add_children([start_mission_2bb, cancel_mission_2bb])
-    main_sequence.add_children([is_start_mission_requested, rotate_right, move_forward])
+    collision_fallback.add_children([move_forward, rotate_right])
+    main_sequence.add_children([is_start_mission_requested, repeat_random_walk])
     cancel_sequence.add_children([is_cancel_mission_requested, main_sequence])
     root.add_child(cancel_sequence)
 

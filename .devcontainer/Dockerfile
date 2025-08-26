@@ -66,6 +66,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   tree \
   && rm -rf /var/lib/apt/lists/*
 
+# Install node
+RUN curl -sL https://deb.nodesource.com/setup_20.x -o /tmp/nodesource_setup.sh \
+  && apt update \
+  && bash /tmp/nodesource_setup.sh \
+  && apt install nodejs \
+  && rm -rf /var/lib/apt/lists/*
   
 # Make default user not need sudo password
 ARG USERNAME=ubuntu
