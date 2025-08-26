@@ -86,9 +86,6 @@ docker run --rm hello-world
 # Clone the workshop materials
 git clone https://github.com/DynoRobotics/dyno_ros2_courses.git
 cd dyno_ros2_courses
-
-# Examine the development container configuration
-ls -la .devcontainer/
 ```
 
 #### Step 3: Open in VSCode Dev Container
@@ -198,11 +195,7 @@ tree my_first_cpp/
 
 ```bash
 # Build all packages in workspace
-cd /workspace
-colcon build
-
-# Source the workspace
-source install/setup.bash
+./run in_container_build
 
 # Verify packages are available
 ros2 pkg list | grep my_first
@@ -482,7 +475,7 @@ colcon build --packages-select <pkg>  # Build specific package
 
 - Check package.xml dependencies
 - Verify setup.py entry points
-- Clean build: `rm -rf build install log && colcon build`
+- Clean build: `./run in_container_build`
 
 #### Nodes Not Communicating:
 
