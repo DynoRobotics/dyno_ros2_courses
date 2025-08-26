@@ -18,7 +18,7 @@ This module introduces participants to the ROS2 ecosystem through Dyno Robotics'
 
 ---
 
-## Section 1: Hook - Dredging Raft Showcase (5 minutes)
+## Section 1: Dredging Raft Showcase (5 minutes)
 
 ### Opening Statement
 
@@ -111,7 +111,7 @@ graph TD
 - **Hardware Abstraction**: Same code works with different hardware
 - **Community Packages**: Thousands of pre-built components
 
-#### What ROS2 Doesn't Provide
+#### What ROS2 Doesn't Always Provide
 
 - **Specific Algorithms**: You write the dredging pattern logic
 - **Hardware Drivers**: You integrate with specific winch controllers

@@ -36,7 +36,7 @@ Modern ROS2 development uses containerized environments for consistency and port
 graph TB
     subgraph "Host System"
         subgraph "Docker Container"
-            ROS2[ROS2 Humble]
+            ROS2[ROS2 Jazzy]
             TOOLS[Development Tools]
             WORKSPACE[Workspace]
         end
