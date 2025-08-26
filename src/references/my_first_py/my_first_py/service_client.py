@@ -29,8 +29,8 @@ class ServiceClient:
     async def timer_callback(self):
         self.timer.cancel()
 
-        # await self.fast_slow_timeout()
-        await self.simultaneous_calls()
+        await self.fast_slow_timeout()
+        # await self.simultaneous_calls()
 
     async def fast_slow_timeout(self):
         request = example_interfaces.srv.AddTwoInts.Request()

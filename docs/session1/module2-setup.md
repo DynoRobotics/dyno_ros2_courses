@@ -390,7 +390,139 @@ ros2 topic hz /chatter
 
 ---
 
-## Section 4: Development Tools and Workflow (Optional - if time permits)
+## Section 4: Service Communication Pattern (Optional - Advanced Topic)
+
+### Understanding ROS2 Services
+
+While Publisher/Subscriber is great for continuous data streams, **Services** provide a different communication pattern:
+
+- **Request/Response communication** (like function calls)
+- **Synchronous interaction** (client waits for response)
+- **One-to-one communication** (one client, one server per request)
+
+### Service vs Topic Communication
+
+| Aspect | Topics (Pub/Sub) | Services |
+|--------|------------------|----------|
+| **Pattern** | Continuous streaming | Request/Response |
+| **Timing** | Asynchronous | Synchronous |
+| **Relationship** | One-to-many | One-to-one |
+| **Use Cases** | Sensor data, status | Commands, calculations |
+
+### Service Message Types
+
+Services use **request/response** message pairs:
+
+- **example_interfaces/srv/AddTwoInts**: Simple math service
+- **std_srvs/srv/Empty**: Trigger service with no data
+- **std_srvs/srv/SetBool**: Enable/disable functionality
+
+### Hands-on: Service Implementation
+
+#### Service Server Example
+
+The service server waits for requests and provides responses:
+
+```python
+# File: src/references/my_first_py/my_first_py/service_server.py
+import rclpy
+from rclpy.node import Node
+from rclpy.callback_groups import ReentrantCallbackGroup
+from async_utils.async_primitives import async_sleep
+import example_interfaces.srv
+
+class ServiceServer:
+    def __init__(self, node: Node):
+        self.node = node
+        self.node._default_callback_group = ReentrantCallbackGroup()
+        self.logger = self.node.get_logger()
+
+        # Create service that adds two integers
+        self.test_service = self.node.create_service(
+            example_interfaces.srv.AddTwoInts,
+            "test_service",
+            self.test_service_callback,
+        )
+
+    async def test_service_callback(self, request, response):
+        # Perform the calculation
+        response.sum = request.a + request.b
+        self.logger.info(f"Adding {request.a} to {request.b} results in {response.sum}")
+        
+        # Simulate processing time
+        await async_sleep(self.node, 1.0)
+        self.logger.info("Finished processing request")
+        
+        return response
+```
+
+#### Service Client Example
+
+The service client sends requests and handles responses:
+
+```python
+# File: src/references/my_first_py/my_first_py/service_client.py
+import rclpy
+from rclpy.node import Node
+from rclpy.callback_groups import ReentrantCallbackGroup
+from async_utils.async_primitives import future_with_timeout
+import example_interfaces.srv
+
+class ServiceClient:
+    def __init__(self, node: Node):
+        self.node = node
+        self.node._default_callback_group = ReentrantCallbackGroup()
+        self.logger = self.node.get_logger()
+
+        # Create client for the test service
+        self.test_client = self.node.create_client(
+            example_interfaces.srv.AddTwoInts, "test_service"
+        )
+
+    async def call_service_with_timeout(self):
+        # Create request
+        request = example_interfaces.srv.AddTwoInts.Request()
+        request.a = 38
+        request.b = 4
+
+        try:
+            # Call service with timeout
+            future = self.test_client.call_async(request)
+            response = await future_with_timeout(self.node, future, 1.5)
+            self.logger.info(f"Service call succeeded: {response.sum}")
+        except TimeoutError as e:
+            self.logger.error(f"Service call timed out: {e}")
+```
+
+#### Key Features Demonstrated:
+
+1. **Async/Await Pattern**: Modern Python async programming
+2. **Timeout Handling**: Prevents hanging on slow services
+3. **Error Handling**: Graceful handling of service failures
+4. **Reentrant Callbacks**: Allows concurrent service calls
+
+#### Testing Services
+
+```bash
+# Terminal 1: Start the service server
+ros2 run my_first_py service_server
+
+# Terminal 2: Start the service client
+ros2 run my_first_py service_client
+
+# Terminal 3: Manual service call
+ros2 service call /test_service example_interfaces/srv/AddTwoInts "{a: 5, b: 3}"
+
+# List available services
+ros2 service list
+
+# Show service details
+ros2 service type /test_service
+```
+
+---
+
+## Section 5: Development Tools and Workflow (Optional - if time permits)
 
 ### Essential ROS2 Commands
 

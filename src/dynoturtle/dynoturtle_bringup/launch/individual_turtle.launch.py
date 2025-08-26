@@ -39,7 +39,7 @@ def generate_launch_description():
     )
 
     behavior_tree = Node(
-        package="dynoturtle_behaviors", executable="charge_tree", name="main_tree"
+        package="dynoturtle_behaviors", executable="simple_tree", name="main_tree"
     )
 
     return LaunchDescription(

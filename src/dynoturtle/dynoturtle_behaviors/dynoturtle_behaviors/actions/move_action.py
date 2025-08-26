@@ -45,7 +45,7 @@ class MoveAction:
         # Constants
         self.stop_msg = Twist()
         self.default_speed = 0.5  # m/s
-        self.position_tolerance = 0.1  # meters
+        self.position_tolerance = 0.2  # meters
 
         # Progress monitoring constants
         self.progress_check_interval = 2.0  # seconds between progress checks
