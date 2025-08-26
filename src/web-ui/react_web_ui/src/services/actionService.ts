@@ -44,6 +44,8 @@ export interface GoalStatus {
     status: string;
     error?: string;
     feedback?: Record<string, string>;
+    result?: Record<string, string>;
+    completed_at?: string; // ISO timestamp for when the goal was completed
 }
 
 export interface ActiveGoalsResponse {

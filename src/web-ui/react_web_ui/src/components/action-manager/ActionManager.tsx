@@ -54,7 +54,17 @@ const ActionManager: React.FC<ActionManagerProps> = ({
     const [activeGoals, setActiveGoals] = useState<GoalStatus[]>([]);
     const [cancellingGoals, setCancellingGoals] = useState<Set<string>>(new Set());
     const [feedbackVisible, setFeedbackVisible] = useState<Set<string>>(new Set());
+    const [failedGoals, setFailedGoals] = useState<Set<string>>(new Set());
+    const [notifiedGoals, setNotifiedGoals] = useState<Set<string>>(new Set());
+    const [completedGoals, setCompletedGoals] = useState<GoalStatus[]>([]);
+    const [showHistory, setShowHistory] = useState<boolean>(false);
+    const [sentGoals, setSentGoals] = useState<Set<string>>(new Set()); // Track goals sent by this instance
     const toast = useToast();
+
+    // Generate unique instance ID for this ActionManager
+    const instanceId = React.useMemo(() => {
+        return id || `action-manager-${Math.random().toString(36).substr(2, 9)}`;
+    }, [id]);
 
     // WebSocket connection
     const { subscribe, unsubscribe, isConnected, connectionState } = useWebSocket();
@@ -78,13 +88,6 @@ const ActionManager: React.FC<ActionManagerProps> = ({
     // WebSocket event handlers
     const handleGoalUpdate = useCallback((data: GoalStatus) => {
         setActiveGoals(prev => {
-            // Check if goal has reached a terminal state
-            const terminalStates = ['completed', 'failed', 'rejected', 'error'];
-            if (terminalStates.includes(data.status)) {
-                // Remove goal from active list if it's in a terminal state
-                return prev.filter(goal => goal.goal_id !== data.goal_id);
-            }
-
             const existingIndex = prev.findIndex(goal => goal.goal_id === data.goal_id);
             if (existingIndex >= 0) {
                 // Update existing goal
@@ -92,11 +95,98 @@ const ActionManager: React.FC<ActionManagerProps> = ({
                 updated[existingIndex] = data;
                 return updated;
             } else {
-                // Add new goal (only if not in terminal state)
+                // Add new goal
                 return [...prev, data];
             }
         });
-    }, []);
+
+        // Handle terminal states - add to history and remove from active goals
+        const terminalStates = ['succeeded', 'aborted', 'canceled', 'failed', 'completed'];
+        if (terminalStates.includes(data.status)) {
+            // Check if this goal is relevant to this ActionManager instance
+            const isRelevantGoal = () => {
+                if (!selectedAction) return false;
+
+                // Extract namespace and action name from the goal's action_name
+                const actionPath = data.action_name.startsWith('/') ? data.action_name.slice(1) : data.action_name;
+                const pathParts = actionPath.split('/');
+
+                let goalNamespace = '';
+                let goalActionName = '';
+
+                if (pathParts.length === 2) {
+                    goalNamespace = pathParts[0];
+                    goalActionName = pathParts[1];
+                } else if (pathParts.length === 1) {
+                    goalNamespace = '';
+                    goalActionName = pathParts[0];
+                } else {
+                    goalActionName = pathParts[pathParts.length - 1];
+                    goalNamespace = pathParts.length > 1 ? pathParts[pathParts.length - 2] : '';
+                }
+
+                // Must match the selected action name exactly
+                if (goalActionName !== selectedAction) {
+                    return false;
+                }
+
+                // Must match the selected namespace exactly
+                if (selectedNamespace === '') {
+                    if (goalNamespace !== '') {
+                        return false;
+                    }
+                } else {
+                    if (goalNamespace !== selectedNamespace) {
+                        return false;
+                    }
+                }
+
+                return true;
+            };
+
+            // Add completed goals to history if they're relevant to this manager AND were sent by this instance
+            if (isRelevantGoal() && sentGoals.has(data.goal_id)) {
+                setCompletedGoals(prev => {
+                    // Check if goal already exists in history to avoid duplicates
+                    if (prev.some(goal => goal.goal_id === data.goal_id)) {
+                        // Update existing goal in history
+                        return prev.map(goal =>
+                            goal.goal_id === data.goal_id ? { ...data, completed_at: new Date().toISOString() } : goal
+                        );
+                    } else {
+                        // Add new goal to history (keep only last 10 goals)
+                        const newGoal = { ...data, completed_at: new Date().toISOString() };
+                        return [newGoal, ...prev].slice(0, 10);
+                    }
+                });
+            }
+
+            // Track failed goals for visual indication (for all goals, not just relevant ones)
+            const failureStates = ['aborted', 'failed'];
+            if (failureStates.includes(data.status)) {
+                setFailedGoals(prev => new Set(prev).add(data.goal_id));
+            }
+
+            // Remove terminal goals after a delay, but keep failed goals visible longer
+            const removeDelay = failureStates.includes(data.status) ? 8000 : 3000;
+            setTimeout(() => {
+                setActiveGoals(prev => prev.filter(goal => goal.goal_id !== data.goal_id));
+                if (failureStates.includes(data.status)) {
+                    setFailedGoals(prev => {
+                        const newSet = new Set(prev);
+                        newSet.delete(data.goal_id);
+                        return newSet;
+                    });
+                }
+                // Clean up notification tracking
+                setNotifiedGoals(prev => {
+                    const newSet = new Set(prev);
+                    newSet.delete(data.goal_id);
+                    return newSet;
+                });
+            }, removeDelay);
+        }
+    }, [selectedAction, selectedNamespace, sentGoals]);
 
     const handleGoalAdded = useCallback((data: GoalStatus) => {
         setActiveGoals(prev => {
@@ -276,6 +366,11 @@ const ActionManager: React.FC<ActionManagerProps> = ({
         }
 
         return activeGoals.filter(goal => {
+            // Only show goals that were sent by this ActionManager instance
+            if (!sentGoals.has(goal.goal_id)) {
+                return false;
+            }
+
             // Extract namespace and action name from the goal's action_name
             // goal.action_name format: "/namespace/action_name" or "/action_name"
             const actionPath = goal.action_name.startsWith('/') ? goal.action_name.slice(1) : goal.action_name;
@@ -471,6 +566,11 @@ const ActionManager: React.FC<ActionManagerProps> = ({
                 : selectedAction;
 
             const response = await actionService.sendGoal(fullActionName, goalValues);
+
+            // Track that this goal was sent by this ActionManager instance
+            if (response.goal_id) {
+                setSentGoals(prev => new Set(prev).add(response.goal_id!));
+            }
 
             // Only show toast for rejected goals, not accepted ones
             if (response.accepted === false) {
@@ -690,143 +790,358 @@ const ActionManager: React.FC<ActionManagerProps> = ({
                                     </Badge>
                                 </HStack>
 
-                                {getFilteredActiveGoals().map((goal) => (
-                                    <Box
-                                        key={goal.goal_id}
-                                        p={2}
-                                        bg="orange.50"
-                                        borderRadius="md"
-                                        border="1px solid"
-                                        borderColor="orange.200"
-                                        sx={{
-                                            _dark: {
-                                                bg: "orange.900",
-                                                borderColor: "orange.700"
-                                            }
-                                        }}
-                                    >
-                                        <VStack align="stretch" spacing={1}>
-                                            <HStack justify="space-between" align="center">
-                                                <VStack align="start" spacing={0} flex="1">
-                                                    <Text fontSize="xs" color="gray.600">
-                                                        ID: {goal.goal_id.substring(0, 8)}...
-                                                    </Text>
-                                                </VStack>
-                                                <HStack spacing={1}>
-                                                    <Badge
-                                                        colorScheme={
-                                                            goal.status === 'accepted' ? 'green' :
-                                                                goal.status === 'pending' ? 'yellow' :
-                                                                    goal.status === 'rejected' ? 'red' : 'gray'
-                                                        }
-                                                        size="sm"
-                                                        variant="subtle"
-                                                    >
-                                                        {goal.status}
-                                                    </Badge>
-                                                    {/* Show feedback toggle for accepted goals, regardless of current feedback availability */}
-                                                    {goal.status === 'accepted' && (
+                                {getFilteredActiveGoals().map((goal) => {
+                                    const isFailedGoal = failedGoals.has(goal.goal_id);
+                                    const failureStates = ['aborted', 'failed'];
+                                    const isCurrentlyFailed = failureStates.includes(goal.status);
+
+                                    return (
+                                        <Box
+                                            key={goal.goal_id}
+                                            p={2}
+                                            bg={isFailedGoal || isCurrentlyFailed ? "red.50" : "orange.50"}
+                                            borderRadius="md"
+                                            border="2px solid"
+                                            borderColor={isFailedGoal || isCurrentlyFailed ? "red.300" : "orange.200"}
+                                            boxShadow={isFailedGoal || isCurrentlyFailed ? "0 0 10px rgba(255, 0, 0, 0.3)" : "none"}
+                                            sx={{
+                                                _dark: {
+                                                    bg: isFailedGoal || isCurrentlyFailed ? "red.900" : "orange.900",
+                                                    borderColor: isFailedGoal || isCurrentlyFailed ? "red.600" : "orange.700"
+                                                }
+                                            }}
+                                        >
+                                            <VStack align="stretch" spacing={1}>
+                                                <HStack justify="space-between" align="center">
+                                                    <VStack align="start" spacing={0} flex="1">
+                                                        <Text fontSize="xs" color="gray.600">
+                                                            ID: {goal.goal_id.substring(0, 8)}...
+                                                        </Text>
+                                                    </VStack>
+                                                    <HStack spacing={1}>
+                                                        <Badge
+                                                            colorScheme={
+                                                                goal.status === 'succeeded' || goal.status === 'completed' ? 'green' :
+                                                                    goal.status === 'accepted' ? 'blue' :
+                                                                        goal.status === 'pending' ? 'yellow' :
+                                                                            goal.status === 'aborted' || goal.status === 'failed' ? 'red' :
+                                                                                goal.status === 'canceled' ? 'orange' :
+                                                                                    goal.status === 'rejected' ? 'red' : 'gray'
+                                                            }
+                                                            size="sm"
+                                                            variant="subtle"
+                                                        >
+                                                            {goal.status}
+                                                        </Badge>
+                                                        {/* Show feedback toggle for accepted goals, regardless of current feedback availability */}
+                                                        {goal.status === 'accepted' && (
+                                                            <Button
+                                                                size="xs"
+                                                                colorScheme="blue"
+                                                                variant="outline"
+                                                                onClick={() => {
+                                                                    setFeedbackVisible(prev => {
+                                                                        const newSet = new Set(prev);
+                                                                        if (newSet.has(goal.goal_id)) {
+                                                                            newSet.delete(goal.goal_id);
+                                                                        } else {
+                                                                            newSet.add(goal.goal_id);
+                                                                        }
+                                                                        return newSet;
+                                                                    });
+                                                                }}
+                                                            >
+                                                                {feedbackVisible.has(goal.goal_id) ? 'Hide' : 'Show'} Feedback
+                                                            </Button>
+                                                        )}
                                                         <Button
                                                             size="xs"
-                                                            colorScheme="blue"
+                                                            colorScheme="red"
                                                             variant="outline"
-                                                            onClick={() => {
-                                                                setFeedbackVisible(prev => {
-                                                                    const newSet = new Set(prev);
-                                                                    if (newSet.has(goal.goal_id)) {
-                                                                        newSet.delete(goal.goal_id);
-                                                                    } else {
-                                                                        newSet.add(goal.goal_id);
-                                                                    }
-                                                                    return newSet;
-                                                                });
-                                                            }}
+                                                            onClick={() => handleCancelGoal(goal.goal_id)}
+                                                            isLoading={cancellingGoals.has(goal.goal_id)}
+                                                            loadingText="Cancelling..."
                                                         >
-                                                            {feedbackVisible.has(goal.goal_id) ? 'Hide' : 'Show'} Feedback
+                                                            Cancel
                                                         </Button>
-                                                    )}
-                                                    <Button
-                                                        size="xs"
-                                                        colorScheme="red"
-                                                        variant="outline"
-                                                        onClick={() => handleCancelGoal(goal.goal_id)}
-                                                        isLoading={cancellingGoals.has(goal.goal_id)}
-                                                        loadingText="Cancelling..."
-                                                    >
-                                                        Cancel
-                                                    </Button>
+                                                    </HStack>
                                                 </HStack>
-                                            </HStack>
-                                            {goal.error && (
-                                                <Text fontSize="xs" color="red.500">
-                                                    Error: {goal.error}
-                                                </Text>
-                                            )}
-                                            {feedbackVisible.has(goal.goal_id) && (
-                                                <Box
-                                                    mt={2}
-                                                    p={2}
-                                                    bg="blue.50"
-                                                    borderRadius="md"
-                                                    border="1px solid"
-                                                    borderColor="blue.200"
-                                                    sx={{
-                                                        _dark: {
-                                                            bg: "blue.900",
-                                                            borderColor: "blue.700"
-                                                        }
-                                                    }}
-                                                >
-                                                    <Text fontSize="xs" fontWeight="semibold" color="blue.700" mb={1}
+                                                {goal.error && (
+                                                    <Text fontSize="xs" color="red.500">
+                                                        Error: {goal.error}
+                                                    </Text>
+                                                )}
+                                                {feedbackVisible.has(goal.goal_id) && (
+                                                    <Box
+                                                        mt={2}
+                                                        p={2}
+                                                        bg="blue.50"
+                                                        borderRadius="md"
+                                                        border="1px solid"
+                                                        borderColor="blue.200"
                                                         sx={{
                                                             _dark: {
-                                                                color: "blue.300"
+                                                                bg: "blue.900",
+                                                                borderColor: "blue.700"
                                                             }
                                                         }}
                                                     >
-                                                        Real-time Feedback:
-                                                    </Text>
-                                                    {goal.feedback && Object.keys(goal.feedback).length > 0 ? (
-                                                        <VStack align="start" spacing={1}>
-                                                            {Object.entries(goal.feedback).map(([key, value]) => (
-                                                                <HStack key={key} spacing={2}>
-                                                                    <Text fontSize="xs" fontWeight="medium" color="gray.600"
-                                                                        sx={{
-                                                                            _dark: {
-                                                                                color: "gray.300"
-                                                                            }
-                                                                        }}
-                                                                    >
-                                                                        {key}:
-                                                                    </Text>
-                                                                    <Text fontSize="xs" color="gray.800"
-                                                                        sx={{
-                                                                            _dark: {
-                                                                                color: "gray.100"
-                                                                            }
-                                                                        }}
-                                                                    >
-                                                                        {value}
-                                                                    </Text>
-                                                                </HStack>
-                                                            ))}
-                                                        </VStack>
-                                                    ) : (
-                                                        <Text fontSize="xs" color="gray.500" fontStyle="italic"
+                                                        <Text fontSize="xs" fontWeight="semibold" color="blue.700" mb={1}
                                                             sx={{
                                                                 _dark: {
-                                                                    color: "gray.400"
+                                                                    color: "blue.300"
                                                                 }
                                                             }}
                                                         >
-                                                            Waiting for feedback from action server...
+                                                            Real-time Feedback:
                                                         </Text>
-                                                    )}
+                                                        {goal.feedback && Object.keys(goal.feedback).length > 0 ? (
+                                                            <VStack align="start" spacing={1}>
+                                                                {Object.entries(goal.feedback).map(([key, value]) => (
+                                                                    <HStack key={key} spacing={2}>
+                                                                        <Text fontSize="xs" fontWeight="medium" color="gray.600"
+                                                                            sx={{
+                                                                                _dark: {
+                                                                                    color: "gray.300"
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            {key}:
+                                                                        </Text>
+                                                                        <Text fontSize="xs" color="gray.800"
+                                                                            sx={{
+                                                                                _dark: {
+                                                                                    color: "gray.100"
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            {value}
+                                                                        </Text>
+                                                                    </HStack>
+                                                                ))}
+                                                            </VStack>
+                                                        ) : (
+                                                            <Text fontSize="xs" color="gray.500" fontStyle="italic"
+                                                                sx={{
+                                                                    _dark: {
+                                                                        color: "gray.400"
+                                                                    }
+                                                                }}
+                                                            >
+                                                                Waiting for feedback from action server...
+                                                            </Text>
+                                                        )}
+                                                    </Box>
+                                                )}
+                                            </VStack>
+                                        </Box>
+                                    );
+                                })}
+                            </VStack>
+                        </Box>
+                    )}
+
+                    {/* Goal History Section */}
+                    {selectedAction && completedGoals.length > 0 && (
+                        <Box>
+                            <Divider />
+                            <VStack spacing={2} align="stretch">
+                                <HStack justify="space-between" align="center">
+                                    <Text fontWeight="semibold" color="gray.700" fontSize="sm">
+                                        Goal History for {selectedAction}
+                                    </Text>
+                                    <HStack spacing={2}>
+                                        <Badge colorScheme="gray" variant="subtle">
+                                            {completedGoals.length} completed
+                                        </Badge>
+                                        <Button
+                                            size="xs"
+                                            colorScheme="blue"
+                                            variant="outline"
+                                            onClick={() => setShowHistory(!showHistory)}
+                                        >
+                                            {showHistory ? 'Hide' : 'Show'} History
+                                        </Button>
+                                        <Button
+                                            size="xs"
+                                            colorScheme="red"
+                                            variant="outline"
+                                            onClick={() => setCompletedGoals([])}
+                                        >
+                                            Clear History
+                                        </Button>
+                                    </HStack>
+                                </HStack>
+
+                                {showHistory && (
+                                    <VStack spacing={2} align="stretch">
+                                        {completedGoals.map((goal) => {
+                                            const getStatusColor = (status: string) => {
+                                                switch (status) {
+                                                    case 'succeeded':
+                                                    case 'completed':
+                                                        return 'green';
+                                                    case 'aborted':
+                                                    case 'failed':
+                                                        return 'red';
+                                                    case 'canceled':
+                                                        return 'orange';
+                                                    default:
+                                                        return 'gray';
+                                                }
+                                            };
+
+                                            const getStatusIcon = (status: string) => {
+                                                switch (status) {
+                                                    case 'succeeded':
+                                                    case 'completed':
+                                                        return '✅';
+                                                    case 'aborted':
+                                                        return '🚨';
+                                                    case 'failed':
+                                                        return '❌';
+                                                    case 'canceled':
+                                                        return '⚠️';
+                                                    default:
+                                                        return '❓';
+                                                }
+                                            };
+
+                                            const statusColor = getStatusColor(goal.status);
+                                            const statusIcon = getStatusIcon(goal.status);
+
+                                            return (
+                                                <Box
+                                                    key={goal.goal_id}
+                                                    p={2}
+                                                    bg={`${statusColor}.50`}
+                                                    borderRadius="md"
+                                                    border="1px solid"
+                                                    borderColor={`${statusColor}.200`}
+                                                    sx={{
+                                                        _dark: {
+                                                            bg: `${statusColor}.900`,
+                                                            borderColor: `${statusColor}.700`
+                                                        }
+                                                    }}
+                                                >
+                                                    <VStack align="stretch" spacing={1}>
+                                                        <HStack justify="space-between" align="center">
+                                                            <VStack align="start" spacing={0} flex="1">
+                                                                <HStack spacing={2}>
+                                                                    <Text fontSize="xs" color="gray.600">
+                                                                        {statusIcon} ID: {goal.goal_id.substring(0, 8)}...
+                                                                    </Text>
+                                                                    <Badge
+                                                                        colorScheme={statusColor}
+                                                                        size="sm"
+                                                                        variant="subtle"
+                                                                    >
+                                                                        {goal.status}
+                                                                    </Badge>
+                                                                </HStack>
+                                                                {(goal as any).completed_at && (
+                                                                    <Text fontSize="xs" color="gray.500">
+                                                                        Completed: {new Date((goal as any).completed_at).toLocaleString()}
+                                                                    </Text>
+                                                                )}
+                                                            </VStack>
+                                                        </HStack>
+
+                                                        {/* Show result for successful goals */}
+                                                        {(goal.status === 'succeeded' || goal.status === 'completed') && goal.result && Object.keys(goal.result).length > 0 && (
+                                                            <Box
+                                                                mt={1}
+                                                                p={2}
+                                                                bg="green.100"
+                                                                borderRadius="md"
+                                                                border="1px solid"
+                                                                borderColor="green.300"
+                                                                sx={{
+                                                                    _dark: {
+                                                                        bg: "green.800",
+                                                                        borderColor: "green.600"
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <Text fontSize="xs" fontWeight="semibold" color="green.700" mb={1}
+                                                                    sx={{
+                                                                        _dark: {
+                                                                            color: "green.300"
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    Result:
+                                                                </Text>
+                                                                <VStack align="start" spacing={1}>
+                                                                    {Object.entries(goal.result).map(([key, value]) => (
+                                                                        <HStack key={key} spacing={2}>
+                                                                            <Text fontSize="xs" fontWeight="medium" color="gray.600"
+                                                                                sx={{
+                                                                                    _dark: {
+                                                                                        color: "gray.300"
+                                                                                    }
+                                                                                }}
+                                                                            >
+                                                                                {key}:
+                                                                            </Text>
+                                                                            <Text fontSize="xs" color="gray.800"
+                                                                                sx={{
+                                                                                    _dark: {
+                                                                                        color: "gray.100"
+                                                                                    }
+                                                                                }}
+                                                                            >
+                                                                                {value}
+                                                                            </Text>
+                                                                        </HStack>
+                                                                    ))}
+                                                                </VStack>
+                                                            </Box>
+                                                        )}
+
+                                                        {/* Show error for failed goals */}
+                                                        {goal.error && (
+                                                            <Box
+                                                                mt={1}
+                                                                p={2}
+                                                                bg="red.100"
+                                                                borderRadius="md"
+                                                                border="1px solid"
+                                                                borderColor="red.300"
+                                                                sx={{
+                                                                    _dark: {
+                                                                        bg: "red.800",
+                                                                        borderColor: "red.600"
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <Text fontSize="xs" fontWeight="semibold" color="red.700" mb={1}
+                                                                    sx={{
+                                                                        _dark: {
+                                                                            color: "red.300"
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    Error:
+                                                                </Text>
+                                                                <Text fontSize="xs" color="red.600"
+                                                                    sx={{
+                                                                        _dark: {
+                                                                            color: "red.200"
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    {goal.error}
+                                                                </Text>
+                                                            </Box>
+                                                        )}
+                                                    </VStack>
                                                 </Box>
-                                            )}
-                                        </VStack>
-                                    </Box>
-                                ))}
+                                            );
+                                        })}
+                                    </VStack>
+                                )}
                             </VStack>
                         </Box>
                     )}

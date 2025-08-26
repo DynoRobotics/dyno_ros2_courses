@@ -14,9 +14,18 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.clock import Duration
 from async_utils.async_primitives import async_sleep
 
-from geometry_msgs.msg import Twist
-from turtlesim.msg import Pose
-from my_first_interfaces.action import Move
+from geometry_msgs.msg import Twist, PoseStamped
+from dynoturtle_interfaces.action import Move
+from transform_utils.transforms import yaw_from_quaternion
+
+
+class SimplePose:
+    """Simple pose class to maintain compatibility with existing code"""
+
+    def __init__(self, x=0.0, y=0.0, theta=0.0):
+        self.x = x
+        self.y = y
+        self.theta = theta
 
 
 class MoveAction:
@@ -49,12 +58,15 @@ class MoveAction:
 
         # Publishers
         self.cmd_vel_publisher = self.node.create_publisher(
-            msg_type=Twist, topic="cmd_vel", qos_profile=10
+            msg_type=Twist, topic="safe_cmd_vel", qos_profile=10
         )
 
         # Subscribers
         self.pose_subscriber = self.node.create_subscription(
-            msg_type=Pose, topic="pose", callback=self.pose_callback, qos_profile=10
+            msg_type=PoseStamped,
+            topic="pose3d",
+            callback=self.pose_callback,
+            qos_profile=10,
         )
 
         # Action server
@@ -67,11 +79,15 @@ class MoveAction:
             cancel_callback=self.cancel_callback,
         )
 
-    def pose_callback(self, msg: Pose):
-        """Callback to update current pose from pose topic"""
-        self.current_pose = msg
+    def pose_callback(self, msg: PoseStamped):
+        """Callback to update current pose from pose3d topic"""
+        # Convert PoseStamped to SimplePose
+        yaw = yaw_from_quaternion(msg.pose.orientation)
+        self.current_pose = SimplePose(
+            x=msg.pose.position.x, y=msg.pose.position.y, theta=yaw
+        )
 
-    def calculate_distance(self, pose1: Pose, pose2: Pose) -> float:
+    def calculate_distance(self, pose1: SimplePose, pose2: SimplePose) -> float:
         """Calculate Euclidean distance between two poses"""
         if pose1 is None or pose2 is None:
             return float("inf")
@@ -80,9 +96,11 @@ class MoveAction:
         dy = pose2.y - pose1.y
         return math.sqrt(dx * dx + dy * dy)
 
-    def calculate_target_pose(self, start_pose: Pose, distance: float) -> Pose:
+    def calculate_target_pose(
+        self, start_pose: SimplePose, distance: float
+    ) -> SimplePose:
         """Calculate target pose based on start pose and distance to move"""
-        target_pose = Pose()
+        target_pose = SimplePose()
         target_pose.x = start_pose.x + distance * math.cos(start_pose.theta)
         target_pose.y = start_pose.y + distance * math.sin(start_pose.theta)
         target_pose.theta = start_pose.theta  # Assuming no rotation for move action
@@ -99,7 +117,7 @@ class MoveAction:
         return distance_to_target <= self.position_tolerance
 
     def calculate_directional_progress(
-        self, start_pose: Pose, current_pose: Pose, target_pose: Pose
+        self, start_pose: SimplePose, current_pose: SimplePose, target_pose: SimplePose
     ) -> float:
         """
         Calculate progress in the intended direction.
@@ -233,7 +251,7 @@ class MoveAction:
                     raise Exception("Action canceled while waiting for pose")
 
             # Set start pose and calculate target pose
-            self.start_pose = Pose()
+            self.start_pose = SimplePose()
             self.start_pose.x = self.current_pose.x
             self.start_pose.y = self.current_pose.y
             self.start_pose.theta = self.current_pose.theta

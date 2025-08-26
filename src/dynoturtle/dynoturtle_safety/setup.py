@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = "web_bridge"
+package_name = "dynoturtle_safety"
 
 setup(
     name=package_name,
@@ -10,12 +10,7 @@ setup(
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
     ],
-    install_requires=[
-        "setuptools",
-        "fastapi",
-        "uvicorn[standard]",
-        "pydantic",
-    ],
+    install_requires=["setuptools"],
     zip_safe=True,
     maintainer="ubuntu",
     maintainer_email="ubuntu@todo.todo",
@@ -23,8 +18,6 @@ setup(
     license="TODO: License declaration",
     tests_require=["pytest"],
     entry_points={
-        "console_scripts": [
-            "web_bridge = web_bridge.main:main",
-        ],
+        "console_scripts": ["safety = dynoturtle_safety.safety:main"],
     },
 )

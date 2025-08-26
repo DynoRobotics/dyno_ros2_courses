@@ -113,7 +113,7 @@ RUN sudo rosdep init || echo "rosdep already initialized"
 
 WORKDIR $DEPENDENCIES_WS
 COPY ros_dependencies.repos ros_dependencies.repos
-RUN sudo vcs import src < ros_dependencies.repos
+# RUN sudo vcs import src < ros_dependencies.repos
 RUN bash -c "sudo apt-get update && \
   rosdep update && \
   rosdep install -q -y --from-paths src --ignore-src && \
