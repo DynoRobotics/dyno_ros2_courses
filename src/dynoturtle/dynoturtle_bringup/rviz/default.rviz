@@ -3,9 +3,8 @@ Panels:
     Help Height: 78
     Name: Displays
     Property Tree Widget:
-      Expanded:
-        - /BumperMarkers1/Topic1
-      Splitter Ratio: 0.5
+      Expanded: ~
+      Splitter Ratio: 0.6764705777168274
     Tree Height: 555
   - Class: rviz_common/Selection
     Name: Selection
@@ -46,6 +45,110 @@ Visualization Manager:
       Plane Cell Count: 11
       Reference Frame: <Fixed Frame>
       Value: true
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Filter (blacklist): ""
+      Filter (whitelist): ""
+      Frame Timeout: 15
+      Frames:
+        All Enabled: true
+        map:
+          Value: true
+        turtle1_front_bumper_link:
+          Value: true
+        turtle1_link:
+          Value: true
+        turtle2_front_bumper_link:
+          Value: true
+        turtle2_link:
+          Value: true
+      Marker Scale: 1
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: false
+      Tree:
+        map:
+          turtle1_link:
+            turtle1_front_bumper_link:
+              {}
+          turtle2_link:
+            turtle2_front_bumper_link:
+              {}
+      Update Interval: 0
+      Value: true
+    - Alpha: 1
+      Class: rviz_default_plugins/RobotModel
+      Collision Enabled: false
+      Description File: ""
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /turtle1/robot_description
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        turtle1_front_bumper_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        turtle1_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Mass Properties:
+        Inertia: false
+        Mass: false
+      Name: Turtle1Model
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Alpha: 1
+      Class: rviz_default_plugins/RobotModel
+      Collision Enabled: false
+      Description File: ""
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /turtle2/robot_description
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        turtle2_front_bumper_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        turtle2_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Mass Properties:
+        Inertia: false
+        Mass: false
+      Name: Turtle2Model
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
       Name: BumperMarkers
@@ -73,32 +176,6 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /battery_visualization
-      Value: true
-    - Class: rviz_default_plugins/TF
-      Enabled: true
-      Filter (blacklist): ""
-      Filter (whitelist): ""
-      Frame Timeout: 15
-      Frames:
-        All Enabled: true
-        map:
-          Value: true
-        turtle1_link:
-          Value: true
-        turtle2_link:
-          Value: true
-      Marker Scale: 1
-      Name: TF
-      Show Arrows: true
-      Show Axes: true
-      Show Names: false
-      Tree:
-        map:
-          turtle1_link:
-            {}
-          turtle2_link:
-            {}
-      Update Interval: 0
       Value: true
   Enabled: true
   Global Options:
@@ -146,17 +223,17 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 24.20368194580078
+      Distance: 20.499052047729492
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 4.677302360534668
-        Y: 5.135334014892578
-        Z: -5.689152240753174
-      Focal Shape Fixed Size: true
+        X: 4.6447930335998535
+        Y: 4.885700225830078
+        Z: -0.29770052433013916
+      Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
@@ -164,7 +241,7 @@ Visualization Manager:
       Pitch: 1.5697963237762451
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.718575954437256
+      Yaw: 4.708581924438477
     Saved: ~
 Window Geometry:
   Displays:
@@ -182,5 +259,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1200
-  X: 66
-  Y: 60
+  X: 478
+  Y: 96

@@ -27,7 +27,7 @@ def generate_launch_description():
 
     ld = LaunchDescription()
     ld.add_action(incrementer_node)
-    ld.add_action(delayed_relay_node)
+    # ld.add_action(delayed_relay_node)
 
     return ld
 

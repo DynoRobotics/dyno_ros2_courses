@@ -378,14 +378,6 @@ ros2 param set /incrementer step_size 3  # Set parameter at runtime
 
 #### rqt_graph - System Visualization
 
-```bash
-# Install rqt tools if not available
-sudo apt update && sudo apt install ros-humble-rqt*
-
-# Launch system visualization
-rqt_graph
-```
-
 **What to look for:**
 
 - **Node connections** - Are nodes properly connected?
@@ -394,11 +386,6 @@ rqt_graph
 
 #### rqt_console - Log Management
 
-```bash
-# Launch log console
-rqt_console
-```
-
 **Debugging with logs:**
 
 - **Filter by node** - Focus on specific node logs
@@ -406,11 +393,6 @@ rqt_console
 - **Search functionality** - Find specific log messages
 
 #### rqt_topic - Real-time Message Monitoring
-
-```bash
-# Launch topic monitor
-rqt_topic
-```
 
 **Features:**
 
@@ -561,13 +543,6 @@ colcon build --cmake-args -DCMAKE_BUILD_TYPE=Debug
 - Try different port in launch file and launch.json
 - Ensure gdbserver is installed: `sudo apt install gdbserver`
 
-#### Issue 3: Optimized code debugging
-
-**Solution:**
-
-- Use Debug build type
-- Add `-O0` flag to disable optimization
-- Use `-g` flag for debug symbols
 
 ### System Integration Issues
 

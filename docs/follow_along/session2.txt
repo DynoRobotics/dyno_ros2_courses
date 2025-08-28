@@ -1,0 +1,14 @@
+Debugging:
+
+1. ros2 launch vscode_bringup cpp_incr_relay_system.launch.py
+2. new terminal -> rqt
+3. go to Plugins->Introspection->Node Graph
+4. ros2 topic echo /number
+5. ros2 topic pub /number std_msgs/msg/Int32 "{data: 1.0}" --once
+
+6. in src/debugging_examples/vscode_bringup/launch/cpp_incr_relay_system.launch.py:
+   comment out the row ld.add_action(delayed_relay_node)
+7. build using ctrl-shift-b
+8. ctrl-C in the terminal where we launched the system and re run the launch command
+9. open src/debugging_examples/vscode_py/vscode_py/delayed_relay_node.py
+10. Make sure Python: Current File is shown in debugger and press play

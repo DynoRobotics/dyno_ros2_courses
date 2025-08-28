@@ -1,0 +1,90 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="dynoturtle">
+
+  <!-- Namespace parameter for configurable link names -->
+  <xacro:arg name="turtle_namespace" default="" />
+  <xacro:property name="turtle_namespace" value="$(arg turtle_namespace)" />
+  
+  <!-- Parameters from simulator_extensions.py -->
+  <xacro:property name="turtle_radius" value="0.3" />
+  <xacro:property name="turtle_height" value="0.2" />
+  <xacro:property name="turtle_mass" value="1.0" />
+  
+  <!-- Bumper parameters -->
+  <xacro:property name="bumper_offset" value="0.4" />
+  <xacro:property name="bumper_radius" value="0.075" />
+  <xacro:property name="bumper_height" value="0.1" />
+  <xacro:property name="bumper_mass" value="0.1" />
+  
+  <!-- Colors and materials -->
+  <material name="turtle_green">
+    <color rgba="0.2 0.8 0.2 1.0"/>
+  </material>
+  
+  <material name="bumper_green">
+    <color rgba="0.2 1.0 0.2 0.8"/>
+  </material>
+
+  <!-- Base link (simple cylinder turtle body) -->
+  <link name="${turtle_namespace}_link">
+    <visual>
+      <geometry>
+        <cylinder radius="${turtle_radius}" length="${turtle_height}"/>
+      </geometry>
+      <origin xyz="0 0 ${turtle_height/2}" rpy="0 0 0"/>
+      <material name="turtle_green"/>
+    </visual>
+    
+    <collision>
+      <geometry>
+        <cylinder radius="${turtle_radius}" length="${turtle_height}"/>
+      </geometry>
+      <origin xyz="0 0 ${turtle_height/2}" rpy="0 0 0"/>
+    </collision>
+    
+    <inertial>
+      <mass value="${turtle_mass}"/>
+      <origin xyz="0 0 ${turtle_height/2}" rpy="0 0 0"/>
+      <inertia ixx="${turtle_mass * (3 * turtle_radius * turtle_radius + turtle_height * turtle_height) / 12}"
+               iyy="${turtle_mass * (3 * turtle_radius * turtle_radius + turtle_height * turtle_height) / 12}"
+               izz="${turtle_mass * turtle_radius * turtle_radius / 2}"
+               ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+
+  <!-- Front bumper link -->
+  <link name="${turtle_namespace}_front_bumper_link">
+    <visual>
+      <geometry>
+        <cylinder radius="${bumper_radius}" length="${bumper_height}"/>
+      </geometry>
+      <origin xyz="0 0 ${bumper_height/2}" rpy="0 0 0"/>
+      <material name="bumper_green"/>
+    </visual>
+    
+    <collision>
+      <geometry>
+        <cylinder radius="${bumper_radius}" length="${bumper_height}"/>
+      </geometry>
+      <origin xyz="0 0 ${bumper_height/2}" rpy="0 0 0"/>
+    </collision>
+    
+    <inertial>
+      <mass value="${bumper_mass}"/>
+      <origin xyz="0 0 ${bumper_height/2}" rpy="0 0 0"/>
+      <inertia ixx="${bumper_mass * (3 * bumper_radius * bumper_radius + bumper_height * bumper_height) / 12}"
+               iyy="${bumper_mass * (3 * bumper_radius * bumper_radius + bumper_height * bumper_height) / 12}"
+               izz="${bumper_mass * bumper_radius * bumper_radius / 2}"
+               ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+
+  <!-- Joint connecting base to front bumper -->
+  <joint name="${turtle_namespace}_base_to_front_bumper" type="fixed">
+    <parent link="${turtle_namespace}_link"/>
+    <child link="${turtle_namespace}_front_bumper_link"/>
+    <!-- Position bumper in front of turtle, matching simulator offset -->
+    <origin xyz="${bumper_offset} 0 0" rpy="0 0 0"/>
+  </joint>
+
+</robot>
