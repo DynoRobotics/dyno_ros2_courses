@@ -12,7 +12,7 @@ from launch.substitutions import PathJoinSubstitution
 
 
 def generate_launch_description():
-    num_turtles = 1
+    num_turtles = 2
 
     launch_dir = os.path.join(
         get_package_share_directory("dynoturtle_bringup"), "launch"
@@ -41,7 +41,7 @@ def generate_launch_description():
     web_gui = ExecuteProcess(
         cmd=["bash", "-c", "npm install && npm run dev"],
         cwd="/home/ubuntu/ws/src/web-ui/react_web_ui",
-        output="screen",
+        # output="screen",
     )
 
     rviz_config_file = PathJoinSubstitution(
@@ -77,7 +77,7 @@ def generate_launch_description():
         simulator_extensions,
         turtle_spawner,
         web_bridge,
-        web_gui,
+        # web_gui,
         rviz,
         py_trees_tree_viewer,
     ]
