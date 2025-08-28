@@ -318,10 +318,10 @@ if __name__ == "__main__":
 #### Step 3: Configure Package Entry Points
 
 ```python
-# File: my_first_package/setup.py
+# File: my_first_py/setup.py
 from setuptools import setup
 
-package_name = 'my_first_package'
+package_name = 'my_first_py'
 
 setup(
     name=package_name,
@@ -351,12 +351,7 @@ setup(
 #### Step 4: Build and Test
 
 ```bash
-# Build the package
-cd /workspace
-colcon build --packages-select my_first_package
-
-# Source the workspace
-source install/setup.bash
+./run in_container_build
 
 # Test the nodes in separate terminals
 # Terminal 1:
@@ -379,13 +374,13 @@ ros2 node info /talker
 ros2 topic list
 
 # Show topic information
-ros2 topic info /chatter
+ros2 topic info /talker
 
 # Echo topic messages
-ros2 topic echo /chatter
+ros2 topic echo /talker
 
 # Show topic publication rate
-ros2 topic hz /chatter
+ros2 topic hz /talker
 ```
 
 ---

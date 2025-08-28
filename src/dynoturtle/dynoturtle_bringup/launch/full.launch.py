@@ -12,7 +12,7 @@ from launch.substitutions import PathJoinSubstitution
 
 
 def generate_launch_description():
-    num_turtles = 1
+    num_turtles = 2
 
     launch_dir = os.path.join(
         get_package_share_directory("dynoturtle_bringup"), "launch"

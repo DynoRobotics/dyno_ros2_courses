@@ -112,7 +112,7 @@ def create_root() -> py_trees.behaviour.Behaviour:
         action_type=Charge,
         action_name="charge",
         wait_for_server_timeout_sec=wait_for_server_timeout_sec,
-        action_goal=Charge.Goal(target_battery_level=0.9),
+        action_goal=Charge.Goal(target_battery_level=0.99),
     )
     charger_pose = PoseStamped()
     charger_pose.pose.position.x = 5.5
