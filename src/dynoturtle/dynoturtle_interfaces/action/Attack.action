@@ -1,0 +1,8 @@
+# Charge action: Waits for battery level to reach target threshold
+# goal definition
+string robot_name
+---
+# result definition
+
+---
+# feedback
