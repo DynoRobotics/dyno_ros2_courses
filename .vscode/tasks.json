@@ -7,7 +7,7 @@
       "label": "build",
       "detail": "Build workspace (default)",
       "type": "shell",
-      "command": "./run in_container_build",
+      "command": "just build",
       "group": {
         "kind": "build",
         "isDefault": true
@@ -21,7 +21,7 @@
       "label": "build debug",
       "detail": "Build workspace in debug mode",
       "type": "shell",
-      "command": "./run in_container_build_debug",
+      "command": "just build_debug",
       "group": {
         "kind": "build",
         "isDefault": false
@@ -36,7 +36,7 @@
       "detail": "Run all tests and show results.",
       "type": "shell",
       "dependsOn": "build",
-      "command": "./run in_container_run_tests",
+      "command": ".just un_tests",
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -46,23 +46,10 @@
       }
     },
     {
-      "label": "test package",
-      "detail": "Build, run tests and show results for one package.",
-      "type": "shell",
-      "command": "./run in_container_run_tests_for_package ${input:rosPkg}",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "group": {
-        "kind": "test",
-        "isDefault": false
-      }
-    },
-    {
       "label": "build verbose",
       "detail": "Build workspace with console_conhesion+",
       "type": "shell",
-      "command": "./run in_container_build_verbose",
+      "command": "just build_verbose",
       "group": {
         "kind": "build",
         "isDefault": false
@@ -76,7 +63,7 @@
       "label": "rebuild",
       "detail": "Rebuild workspace",
       "type": "shell",
-      "command": "./run in_container_rebuild",
+      "command": "just rebuild",
       "group": {
         "kind": "build",
         "isDefault": false
@@ -90,7 +77,7 @@
       "label": "install dependencies",
       "detail": "Run rosdep and pip install for workspace",
       "type": "shell",
-      "command": "./run in_container_install_dependencies",
+      "command": "just install_dependencies",
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -100,7 +87,7 @@
       "label": "lint",
       "detail": "Run python and cpp linters",
       "type": "shell",
-      "command": "./run in_container_lint",
+      "command": "just lint",
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -117,7 +104,10 @@
       "type": "pickString",
       "id": "rosPkg",
       "description": "Ros pkg",
-      "options": ["vscode_cpp", "vscode_py"]
+      "options": [
+        "vscode_cpp",
+        "vscode_py"
+      ]
     }
   ]
 }

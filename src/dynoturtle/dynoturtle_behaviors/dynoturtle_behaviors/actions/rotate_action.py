@@ -7,7 +7,6 @@ from rclpy.action.server import ServerGoalHandle
 from rclpy.executors import (
     ExternalShutdownException,
     SingleThreadedExecutor,
-    MultiThreadedExecutor,
 )
 from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup

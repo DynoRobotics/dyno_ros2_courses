@@ -2,8 +2,13 @@ import os
 import launch
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.substitutions import Command, FindExecutable, PathJoinSubstitution
-from launch.actions import OpaqueFunction
+from launch.substitutions import (
+    Command,
+    FindExecutable,
+    PathJoinSubstitution,
+    LaunchConfiguration,
+)
+from launch.actions import OpaqueFunction, DeclareLaunchArgument
 
 from ament_index_python.packages import get_package_share_directory
 from launch.actions import IncludeLaunchDescription
@@ -46,6 +51,16 @@ def launch_robot_state_publisher(context, *args, **kwargs):
 
 
 def generate_launch_description():
+    # Declare launch argument for behavior tree executable
+    behavior_tree_arg = DeclareLaunchArgument(
+        "behavior_tree",
+        default_value="simple_tree",
+        description="Name of the behavior tree executable to run for this turtle",
+    )
+
+    # Get the launch configuration value
+    behavior_tree = LaunchConfiguration("behavior_tree")
+
     launch_dir = os.path.join(
         get_package_share_directory("dynoturtle_bringup"), "launch"
     )
@@ -75,11 +90,14 @@ def generate_launch_description():
     )
 
     behavior_tree = Node(
-        package="dynoturtle_behaviors", executable="charge_tree", name="main_tree"
+        package="dynoturtle_behaviors",
+        executable=behavior_tree,
+        name="main_tree",
     )
 
     return LaunchDescription(
         [
+            behavior_tree_arg,
             OpaqueFunction(function=launch_robot_state_publisher),
             safety,
             localization,

@@ -41,7 +41,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
     // Get WebSocket URL from environment or default
     const getWebSocketUrl = useCallback(() => {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5173';
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5183';
         const wsUrl = baseUrl.replace(/^http/, 'ws');
         return `${wsUrl}/ws/events`;
     }, []);

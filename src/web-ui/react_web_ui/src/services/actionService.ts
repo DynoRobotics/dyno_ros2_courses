@@ -57,8 +57,8 @@ class ActionService {
     private baseUrl: string;
 
     constructor() {
-        // Default to localhost:5173, can be configured via environment variables
-        this.baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5173';
+        // Default to localhost:5183, can be configured via environment variables
+        this.baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5183';
     }
 
     /**

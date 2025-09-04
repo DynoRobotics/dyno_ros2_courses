@@ -54,14 +54,6 @@
 
   <!-- Front bumper link -->
   <link name="${turtle_namespace}_front_bumper_link">
-    <visual>
-      <geometry>
-        <cylinder radius="${bumper_radius}" length="${bumper_height}"/>
-      </geometry>
-      <origin xyz="0 0 ${bumper_height/2}" rpy="0 0 0"/>
-      <material name="bumper_green"/>
-    </visual>
-    
     <collision>
       <geometry>
         <cylinder radius="${bumper_radius}" length="${bumper_height}"/>

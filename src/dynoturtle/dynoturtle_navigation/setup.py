@@ -19,7 +19,8 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "move_to_action = dynoturtle_navigation.move_to_action:main"
+            "move_to_action = dynoturtle_navigation.move_to_action:main",
+            "goal_pose_client = dynoturtle_navigation.goal_pose_client:main",
         ],
     },
 )

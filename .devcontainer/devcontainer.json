@@ -24,7 +24,8 @@
         "peakchen90.open-html-in-browser",
         "ms-vscode.cpptools-extension-pack",
         "saoudrizwan.claude-dev",
-        "bierner.markdown-mermaid"
+        "bierner.markdown-mermaid",
+        "nefrob.vscode-just-syntax"
       ]
     }
   },

@@ -5,18 +5,30 @@ from launch.actions import GroupAction, ExecuteProcess
 from launch_ros.actions import PushRosNamespace, Node
 
 from ament_index_python.packages import get_package_share_directory
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
+from launch.actions import (
+    IncludeLaunchDescription,
+    DeclareLaunchArgument,
+    OpaqueFunction,
+)
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.substitutions import FindPackageShare
-from launch.substitutions import PathJoinSubstitution
+from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
 
 
-def generate_launch_description():
-    num_turtles = 2
+def launch_setup(context, *args, **kwargs):
+    """
+    Function to set up launch actions that depend on launch arguments.
+    This is called at runtime when launch arguments are available.
+    """
+    # Get the actual value of num_turtles from the launch context
+    num_turtles_value = int(context.launch_configurations["num_turtles"])
 
     launch_dir = os.path.join(
         get_package_share_directory("dynoturtle_bringup"), "launch"
     )
+
+    # Get the launch configuration for passing to nodes
+    num_turtles = LaunchConfiguration("num_turtles")
 
     turtlesim = Node(
         package="turtlesim", executable="turtlesim_node", name="turtlesim_node"
@@ -36,14 +48,6 @@ def generate_launch_description():
         parameters=[{"num_turtles": num_turtles}],
     )
 
-    web_bridge = Node(package="web_bridge", executable="web_bridge", name="web_bridge")
-
-    web_gui = ExecuteProcess(
-        cmd=["bash", "-c", "npm install && npm run dev"],
-        cwd="/home/ubuntu/ws/src/web-ui/react_web_ui",
-        # output="screen",
-    )
-
     rviz_config_file = PathJoinSubstitution(
         [FindPackageShare("dynoturtle_bringup"), "rviz", "default.rviz"]
     )
@@ -60,8 +64,9 @@ def generate_launch_description():
         cmd=["py-trees-tree-viewer"],
     )
 
+    # Create turtle instances dynamically based on num_turtles argument
     turtles = []
-    for i in range(0, num_turtles):
+    for i in range(0, num_turtles_value):
         turtle_launch = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 os.path.join(launch_dir, "individual_turtle.launch.py")
@@ -76,14 +81,31 @@ def generate_launch_description():
         turtlesim,
         simulator_extensions,
         turtle_spawner,
-        web_bridge,
-        # web_gui,
         rviz,
         py_trees_tree_viewer,
     ]
     launch_list.extend(turtles)
 
-    return LaunchDescription(launch_list)
+    return launch_list
+
+
+def generate_launch_description():
+    # Declare launch argument for number of turtles
+    num_turtles_arg = DeclareLaunchArgument(
+        "num_turtles",
+        default_value="1",
+        description="Number of turtles to spawn in the simulation",
+    )
+
+    # Use OpaqueFunction to handle launch configuration evaluation at runtime
+    opaque_function = OpaqueFunction(function=launch_setup)
+
+    return LaunchDescription(
+        [
+            num_turtles_arg,
+            opaque_function,
+        ]
+    )
 
 
 def main(argv=None):

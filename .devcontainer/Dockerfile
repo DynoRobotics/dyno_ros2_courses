@@ -64,6 +64,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   ranger \
   htop \
   tree \
+  just \
   && rm -rf /var/lib/apt/lists/*
 
 # Install node
@@ -162,3 +163,4 @@ RUN echo "export RMW_IMPLEMENTATION=rmw_zenoh_cpp" >> /home/ubuntu/.bashrc
 
 RUN echo "alias zenohd='ros2 run rmw_zenoh_cpp rmw_zenohd'" >> /home/ubuntu/.bashrc
 RUN echo "export PIP_BREAK_SYSTEM_PACKAGES=1" >> /home/ubuntu/.bashrc
+RUN echo 'eval "$(just --completions bash)"' >> /home/ubuntu/.bashrc

@@ -528,7 +528,7 @@ npm run dev
 ros2 launch dynoturtle_bringup full.launch.py
 ```
 
-Open browser at `http://localhost:5173/`
+Open browser at `http://localhost:5183/`
 
 
 ### Activity 2: Behavior Tree Visualization
