@@ -1,0 +1,14 @@
+# Enable X-forwarding from container (run outside docker)
+xhost +local:docker
+
+# Run zenoh router
+zenodh
+
+# Start basic simulation
+just l_turtle
+
+# Start web interface for sending actions
+just web
+
+# Teleoperate turtle
+just teleop
