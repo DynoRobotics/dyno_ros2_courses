@@ -60,11 +60,13 @@ def create_root() -> py_trees.behaviour.Behaviour:
         ),
     )
 
-    is_cancel_mission_requested = py_trees.behaviours.CheckBlackboardVariableValue(
-        name="Cancel?",
-        check=py_trees.common.ComparisonExpression(
-            variable="cancel_mission", value=False, operator=operator.eq
-        ),
+    is_not_cancelled_mission_requested = (
+        py_trees.behaviours.CheckBlackboardVariableValue(
+            name="NotCancelled?",
+            check=py_trees.common.ComparisonExpression(
+                variable="cancel_mission", value=False, operator=operator.eq
+            ),
+        )
     )
 
     # Subtrees
@@ -84,7 +86,7 @@ def create_root() -> py_trees.behaviour.Behaviour:
     topics_2bb.add_children([start_mission_2bb, cancel_mission_2bb])
     collision_fallback.add_children([move_forward, rotate_right])
     main_sequence.add_children([is_start_mission_requested, repeat_random_walk])
-    cancel_sequence.add_children([is_cancel_mission_requested, main_sequence])
+    cancel_sequence.add_children([is_not_cancelled_mission_requested, main_sequence])
     root.add_child(cancel_sequence)
 
     return root

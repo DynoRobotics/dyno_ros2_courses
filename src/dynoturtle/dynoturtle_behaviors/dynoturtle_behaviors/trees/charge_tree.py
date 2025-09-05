@@ -133,11 +133,13 @@ def create_root() -> py_trees.behaviour.Behaviour:
         ),
     )
 
-    is_cancel_mission_requested = py_trees.behaviours.CheckBlackboardVariableValue(
-        name="Cancel?",
-        check=py_trees.common.ComparisonExpression(
-            variable="cancel_mission", value=False, operator=operator.eq
-        ),
+    is_not_cancelled_mission_requested = (
+        py_trees.behaviours.CheckBlackboardVariableValue(
+            name="NotCancelled?",
+            check=py_trees.common.ComparisonExpression(
+                variable="cancel_mission", value=False, operator=operator.eq
+            ),
+        )
     )
 
     should_charge = py_trees.behaviours.CheckBlackboardVariableValue(
@@ -175,7 +177,7 @@ def create_root() -> py_trees.behaviour.Behaviour:
     main_sequence.add_children(
         [is_start_mission_requested, repeat_charge_and_random_walk]
     )
-    cancel_sequence.add_children([is_cancel_mission_requested, main_sequence])
+    cancel_sequence.add_children([is_not_cancelled_mission_requested, main_sequence])
     root.add_child(cancel_sequence)
 
     return root
