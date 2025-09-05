@@ -1,15 +1,13 @@
-
 set shell := ["bash", "-c"]
 
+build:
+    ./check_in_container.sh && \
+    cd .. && colcon build --merge-install --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
 install_dependencies:
     ./check_in_container.sh && \
     bash -c 'sudo apt-get update && rosdep install --from-paths src --ignore-src -y' && \
     python3 -m pip install --break-system-packages -r requirements.txt
-
-build:
-    ./check_in_container.sh && \
-    cd .. && colcon build --merge-install --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
 build_debug:
     ./check_in_container.sh && \
