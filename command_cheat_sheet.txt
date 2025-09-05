@@ -2,13 +2,13 @@
 xhost +local:docker
 
 # Run zenoh router
-zenodh
+zenohd
 
 # Start basic simulation
 just l_turtle_2
 
-# Start web interface for sending actions
-just web
-
 # Teleoperate turtle
 just teleop
+
+# Start web interface for sending actions
+just web
