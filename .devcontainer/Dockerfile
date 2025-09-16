@@ -73,14 +73,14 @@ RUN curl -sL https://deb.nodesource.com/setup_20.x -o /tmp/nodesource_setup.sh \
   && bash /tmp/nodesource_setup.sh \
   && apt install nodejs \
   && rm -rf /var/lib/apt/lists/*
-  
+
 # Make default user not need sudo password
 ARG USERNAME=ubuntu
 RUN apt-get update \
-&& apt-get install -y sudo \
-&& echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME \
-&& chmod 0440 /etc/sudoers.d/$USERNAME \
-&& rm -rf /var/lib/apt/lists/*
+  && apt-get install -y sudo \
+  && echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME \
+  && chmod 0440 /etc/sudoers.d/$USERNAME \
+  && rm -rf /var/lib/apt/lists/*
 
 USER $USERNAME
 
@@ -96,9 +96,9 @@ ENV DEBIAN_FRONTEND=
 
 # Set up autocompletion for user
 RUN sudo apt-get update && sudo apt-get install -y git bash-completion \
-&& echo "if [ -f /opt/ros/${ROS_DISTRO}/setup.bash ]; then source /opt/ros/${ROS_DISTRO}/setup.bash; fi" >> /home/$USERNAME/.bashrc \
-&& echo "if [ -f /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash ]; then source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash; fi" >> /home/$USERNAME/.bashrc \
-&& sudo rm -rf /var/lib/apt/lists/*
+  && echo "if [ -f /opt/ros/${ROS_DISTRO}/setup.bash ]; then source /opt/ros/${ROS_DISTRO}/setup.bash; fi" >> /home/$USERNAME/.bashrc \
+  && echo "if [ -f /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash ]; then source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash; fi" >> /home/$USERNAME/.bashrc \
+  && sudo rm -rf /var/lib/apt/lists/*
 
 RUN sudo adduser ubuntu dialout
 

@@ -24,3 +24,19 @@ repositories:
         type: git
         url: https://github.com/splintered-reality/py_trees_ros_viewer.git
         version: release/0.2.x
+
+    # Dynobot 
+    dyno_gazebo_worlds:
+        type: git
+        url: https://github.com/DynoRobotics/dyno_gazebo_worlds.git
+        version: main
+    
+    gazebo_ros_pkgs:
+        type: git
+        url: https://github.com/DynoRobotics/gazebo_ros_pkgs.git
+        version: planar-move-gravity
+        
+    joy2twist:
+        type: git
+        url: https://github.com/husarion/joy2twist
+        version: ros2

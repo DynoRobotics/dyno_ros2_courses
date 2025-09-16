@@ -1,0 +1,24 @@
+<?xml version='1.0'?>
+<sdf version='1.7'>
+  <model name="dyno_kontor_model">
+    <static>true</static>
+    <link name="dyno_kontor_link">
+      <visual name="visual">
+        <geometry>
+          <mesh>
+            <uri>meshes/kontor_UV.dae</uri>
+            <scale>1 1 1</scale>
+          </mesh>
+        </geometry>
+      </visual>
+      <collision name="collision">
+        <geometry>
+          <mesh>
+            <uri>meshes/kontor_UV.dae</uri>
+            <scale>1 1 1</scale>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+  </model>
+</sdf>
