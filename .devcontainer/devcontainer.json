@@ -6,10 +6,10 @@
   "runServices": [
     "ros2_vscode_dev"
   ],
-  "remoteUser": "ubuntu",
-  // "remoteUser": "ros",
-  "workspaceFolder": "/home/ubuntu/ws",
-  // "workspaceFolder": "/home/ros/src",
+  // "remoteUser": "ubuntu",
+  // "workspaceFolder": "/home/ubuntu/ws",
+  "remoteUser": "ros",
+  "workspaceFolder": "/home/ros/src",
   "customizations": {
     "vscode": {
       "extensions": [
