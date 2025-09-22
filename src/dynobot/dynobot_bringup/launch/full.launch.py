@@ -1,5 +1,4 @@
-import os
-import time
+import os, time
 import launch
 from launch import LaunchDescription
 from launch.actions import GroupAction, ExecuteProcess
@@ -14,6 +13,8 @@ from launch.actions import (
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.substitutions import FindPackageShare
 from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
+
+from launch.conditions import IfCondition, UnlessCondition
 
 
 def kill_gazebo():
@@ -58,37 +59,23 @@ def launch_setup(context, *args, **kwargs):
     Function to set up launch actions that depend on launch arguments.
     This is called at runtime when launch arguments are available.
     """
-    # Get the actual value of num_turtles from the launch context
-    num_turtles_value = int(context.launch_configurations["num_turtles"])
+    kill_gazebo()
+    kill_daemon()
+    kill_ros_processes()
 
-    launch_dir = os.path.join(
-        get_package_share_directory("dynoturtle_bringup"), "launch"
+    bringup_dir = get_package_share_directory("dynobot_bringup")
+    launch_dir = os.path.join(bringup_dir, "launch")
+    rviz_dir = os.path.join(bringup_dir, "rviz")
+
+    use_sim_time = LaunchConfiguration("use_sim_time")
+
+    use_sim_time_arg = DeclareLaunchArgument(
+        "use_sim_time",
+        default_value="true",
+        description="Use simulation (Gazebo) clock if true",
     )
 
-    # Get the launch configuration for passing to nodes
-    num_turtles = LaunchConfiguration("num_turtles")
-
-    turtlesim = Node(
-        package="turtlesim", executable="turtlesim_node", name="turtlesim_node"
-    )
-
-    turtle_spawner = Node(
-        package="dynoturtle_simulation",
-        executable="turtle_spawner",
-        name="turtle_spawner",
-        parameters=[{"num_turtles": num_turtles}],
-    )
-
-    simulator_extensions = Node(
-        package="dynoturtle_simulation",
-        executable="simulator_extensions",
-        name="simulator_extensions",
-        parameters=[{"num_turtles": num_turtles}],
-    )
-
-    rviz_config_file = PathJoinSubstitution(
-        [FindPackageShare("dynoturtle_bringup"), "rviz", "default.rviz"]
-    )
+    rviz_config_file = PathJoinSubstitution([rviz_dir, "default.rviz"])
 
     rviz = Node(
         package="rviz2",
@@ -98,49 +85,41 @@ def launch_setup(context, *args, **kwargs):
         output="screen",
     )
 
-    py_trees_tree_viewer = ExecuteProcess(
-        cmd=["py-trees-tree-viewer"],
+    dynobot = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(launch_dir, "robot.launch.py")),
+        launch_arguments={
+            "use_sim_time": use_sim_time,
+        }.items(),
     )
 
-    # Create turtle instances dynamically based on num_turtles argument
-    turtles = []
-    for i in range(0, num_turtles_value):
-        turtle_launch = IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(
-                os.path.join(launch_dir, "individual_turtle.launch.py")
-            )
-        )
+    gazebo = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(launch_dir, "gazebo.launch.py")),
+        launch_arguments={
+            "use_sim_time": use_sim_time,
+        }.items(),
+        condition=IfCondition(LaunchConfiguration("use_sim_time")),
+    )
 
-        turtles.append(
-            GroupAction(actions=[PushRosNamespace(f"turtle{i+1}"), turtle_launch])
-        )
+    lidar_hw_stub = Node(
+        package="dynobot_sensors",
+        executable="lidar_hw_stub",
+        name="lidar_hw_stub",
+        output="screen",
+        condition=UnlessCondition(LaunchConfiguration("use_sim_time")),
+    )
 
-    launch_list = [
-        turtlesim,
-        simulator_extensions,
-        turtle_spawner,
-        rviz,
-        py_trees_tree_viewer,
-    ]
-    launch_list.extend(turtles)
+    launch_list = [use_sim_time_arg, rviz, dynobot, gazebo, lidar_hw_stub]
 
     return launch_list
 
 
 def generate_launch_description():
-    # Declare launch argument for number of turtles
-    num_turtles_arg = DeclareLaunchArgument(
-        "num_turtles",
-        default_value="1",
-        description="Number of turtles to spawn in the simulation",
-    )
 
     # Use OpaqueFunction to handle launch configuration evaluation at runtime
     opaque_function = OpaqueFunction(function=launch_setup)
 
     return LaunchDescription(
         [
-            num_turtles_arg,
             opaque_function,
         ]
     )

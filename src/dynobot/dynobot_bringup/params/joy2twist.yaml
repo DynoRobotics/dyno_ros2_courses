@@ -1,0 +1,22 @@
+/**:
+  ros__parameters:
+    linear_velocity_factor:
+      fast: 1.6
+      regular: 1.0
+      slow: 0.4
+
+    angular_velocity_factor:
+      fast: 1.6
+      regular: 1.0
+      slow: 0.5
+
+    # This button mapping should be adjusted to the specific controller
+    # The following map is suited for Logitech F710
+    button_index_map:
+      axis:
+        linear_y: 0 # Left joystick - left/right
+        linear_x: 1 # Left joystick - up/down
+        angular_z: 2 # Right joystick  - left/right
+      dead_man_switch: 4 # LB
+      slow_mode: 1 # A
+      fast_mode: 2 # B

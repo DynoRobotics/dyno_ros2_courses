@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<robot name="dynobot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <xacro:property name="PI" value="3.1415926535897931" />
+    <xacro:property name="dynobot_radius" value="0.3" />
+
+    <gazebo reference="chassis_link">
+        <material>Gazebo/DarkGray</material>
+    </gazebo>
+
+    <gazebo reference="caster_wheel">
+        <material>Gazebo/Black</material>
+        <mu1>0.001</mu1>
+        <mu2>0.001</mu2>
+    </gazebo>
+
+    <gazebo>
+        <plugin name="gz::sim::systems::DiffDrive" filename="gz-sim-diff-drive-system">
+            <!-- Wheel Information -->
+            <left_joint>left_wheel_joint</left_joint>
+            <right_joint>right_wheel_joint</right_joint>
+            <wheel_separation>${dynobot_radius * 2}</wheel_separation>
+            <wheel_radius>0.059</wheel_radius>
+
+            <!-- Inputs -->
+            <topic>cmd_vel</topic>
+
+            <!-- Outputs -->
+            <frame_id>odom</frame_id>
+            <child_frame_id>base_link</child_frame_id>
+            <odom_topic>odom</odom_topic>
+            <odom_publisher_frequency>30</odom_publisher_frequency>
+
+            <tf_topic>/tf</tf_topic>
+        </plugin>
+
+        <plugin filename="gz-sim-joint-state-publisher-system"
+            name="gz::sim::systems::JointStatePublisher">
+            <topic>joint_states</topic>
+            <joint_name>left_wheel_joint</joint_name>
+            <joint_name>right_wheel_joint</joint_name>
+        </plugin>
+    </gazebo>
+</robot>

@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<robot name="dynobot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="wheel" params="prefix parent_link *joint_pose reflect">
+
+    <xacro:property name="wheel_radius" value="0.059" />
+    <xacro:property name="wheel_width" value="0.065" />
+    <xacro:property name="PI" value="3.1415926535897931" />
+
+
+    <link name="${prefix}_wheel_link">
+
+      <visual>
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}" />
+        </geometry>
+        <material name="black" />
+      </visual>
+
+      <collision>
+        <origin xyz="0 0 ${reflect*wheel_width/2}" rpy="0 0 ${PI/2}" />
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}" />
+        </geometry>
+      </collision>
+
+      <xacro:inertial_cylinder mass="0.1" radius="${wheel_radius}" length="${wheel_width}">
+        <origin xyz="0 0 0" rpy="0 0 0" />
+      </xacro:inertial_cylinder>
+    </link>
+
+    <joint name="${prefix}_wheel_joint" type="continuous">
+      <xacro:insert_block name="joint_pose" />
+      <parent link="${parent_link}" />
+      <child link="${prefix}_wheel_link" />
+      <axis xyz="0.0 0.0 1.0" />
+    </joint>
+
+    <gazebo reference="${prefix}_wheel_link">
+      <material>Gazebo/Orange</material>
+      <self_collide>true</self_collide>
+      <!-- <mu1>0.2</mu1>
+      <mu2>0.5</mu2> -->
+    </gazebo>
+
+  </xacro:macro>
+</robot>

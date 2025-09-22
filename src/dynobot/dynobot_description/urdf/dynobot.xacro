@@ -1,0 +1,106 @@
+<?xml version="1.0"?>
+<robot name="dynobot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+
+  <!-- Namespace parameter for configurable link names -->
+  <xacro:property name="PI" value="3.1415926535897931" />
+
+  <!-- Parameters from simulator_extensions.py -->
+  <xacro:property name="turtle_radius" value="0.3" />
+  <xacro:property name="turtle_height" value="0.2" />
+  <xacro:property name="turtle_mass" value="10" />
+
+  <xacro:property name="use_lidar" value="true" />
+  <xacro:property name="lidar_min_range" value="0.06" />
+  <xacro:property name="lidar_max_range" value="100.0" />
+
+  <!-- Includes -->
+  <xacro:include filename="$(find dynobot_description)/urdf/materials.xacro" />
+  <xacro:include filename="$(find dynobot_description)/urdf/accessories/wheel.xacro" />
+  <xacro:include filename="$(find dynobot_description)/urdf/inertial_macros.xacro" />
+  <xacro:include filename="$(find dynobot_description)/urdf/accessories/gazebo_control.xacro" />
+  <xacro:include filename="$(find dynobot_description)/urdf/accessories/lidar.xacro" />
+
+  <!-- Main base link -->
+  <link name="base_link">
+
+  </link>
+
+  <joint name="chassis_joint" type="fixed">
+    <parent link="base_link" />
+    <child link="chassis_link" />
+    <origin xyz="0 0 ${turtle_height/2}" rpy="0 0 0" />
+  </joint>
+
+  <!-- Base link (simple cylinder turtle body) -->
+  <link name="chassis_link">
+    <visual>
+      <geometry>
+        <cylinder radius="${turtle_radius}" length="${turtle_height}" />
+      </geometry>
+      <material name="dyno_green" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+    </visual>
+
+    <collision>
+      <geometry>
+        <cylinder radius="${turtle_radius}" length="${turtle_height}" />
+      </geometry>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+    </collision>
+
+    <xacro:inertial_cylinder mass="${turtle_mass}" radius="${turtle_radius}"
+      length="${turtle_height}">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+    </xacro:inertial_cylinder>
+  </link>
+
+
+  <!-- Caster Wheel -->
+  <joint name="caster_wheel_joint" type="fixed">
+    <parent link="base_link" />
+    <child link="caster_wheel" />
+    <origin xyz="${turtle_radius*3/4} 0 0" rpy="0 0 0" />
+  </joint>
+
+  <link name="caster_wheel">
+    <visual>
+      <geometry>
+        <sphere radius="0.059" />
+      </geometry>
+      <material name="black" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+    </visual>
+
+    <collision>
+      <geometry>
+        <sphere radius="0.059" />
+      </geometry>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+    </collision>
+
+    <xacro:inertial_sphere mass="0.1" radius="0.059">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+    </xacro:inertial_sphere>
+  </link>
+
+
+  <!-- Wheels -->
+  <xacro:wheel prefix="left" parent_link="base_link" reflect="1">
+    <origin xyz="-0.05 ${turtle_radius} 0.0" rpy="-${PI/2} 0.0 0.0" />
+  </xacro:wheel>
+
+  <xacro:wheel prefix="right" parent_link="base_link" reflect="-1">
+    <origin xyz="-0.05 ${-turtle_radius} 0.0" rpy="-${PI/2} 0.0 0.0" />
+  </xacro:wheel>
+
+
+  <!-- Lidar -->
+  <xacro:if value="${use_lidar}">
+    <xacro:lidar frame="laser" topic="/scan" parent_link="chassis_link" min_angle="${-PI}"
+      max_angle="${PI}" min_range="${lidar_min_range}" max_range="${lidar_max_range}">
+      <origin xyz="0 0 ${turtle_height/2}" rpy="0 0 0" />
+    </xacro:lidar>
+  </xacro:if>
+
+</robot>

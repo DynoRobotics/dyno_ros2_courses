@@ -1,0 +1,105 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:macro name="lidar"
+    params="frame topic parent_link min_angle max_angle min_range:=0.0 max_range:=100.0 *origin">
+
+    <!-- actual sample size = 2000 -->
+    <xacro:macro name="lslidar"
+      params="frame:=laser_link topic:=scan sample_size:=720 update_rate:=10
+             min_range:=0.0 max_range:=100.0 robot_namespace:=/">
+
+      <link name="${frame}_link">
+        <inertial>
+          <mass value="1.1" />
+          <origin xyz="0 0 0" />
+          <inertia ixx="${0.0833333 * 1.1 * (0.102*0.102 + 0.152*0.152)}" ixy="0.0" ixz="0.0"
+            iyy="${0.0833333 * 1.1 * (0.105*0.105 + 0.152*0.152)}" iyz="0.0"
+            izz="${0.0833333 * 1.1 * (0.105*0.105 + 0.102*0.102)}" />
+        </inertial>
+      </link>
+
+      <gazebo reference="${frame}_link">
+        <turnGravityOff>false</turnGravityOff>
+        <sensor type="gpu_lidar" name="laser">
+          <pose>0 0 0 0 0 0</pose>
+          <visualize>false</visualize>
+          <update_rate>${update_rate}</update_rate>
+          <lidar>
+            <scan>
+              <horizontal>
+                <samples>${sample_size}</samples>
+                <resolution>1</resolution>
+                <min_angle>${min_angle}</min_angle>
+                <max_angle>${max_angle}</max_angle>
+              </horizontal>
+            </scan>
+
+            <range>
+              <min>${min_range}</min>
+              <max>${max_range}</max>
+              <resolution>0.01</resolution>
+            </range>
+
+            <noise>
+              <type>gaussian</type>
+              <mean>0.0</mean>
+              <stddev>0.001</stddev>
+            </noise>
+          </lidar>
+          <topic>${topic}</topic>
+          <gz_frame_id>${frame}_link</gz_frame_id>
+
+
+          <!-- <ros>
+              <remapping>~/out:=${topic}</remapping>
+              <qos>
+                <topic name="${topic}">
+                    <publisher>
+                        <reliability>best_effort</reliability>
+                        <durability>volatile</durability>
+                    </publisher>
+                </topic>
+              </qos>
+            </ros>
+            <frame_name>${frame}_link</frame_name>
+            <robot_namespace>${robot_namespace}</robot_namespace>
+            <output_type>sensor_msgs/LaserScan</output_type> -->
+
+        </sensor>
+      </gazebo>
+    </xacro:macro>
+
+    <xacro:lslidar frame="${frame}" topic="${topic}" min_range="${min_range}"
+      max_range="${max_range}" />
+
+    <joint name="${frame}_mount_joint" type="fixed">
+      <xacro:insert_block name="origin" />
+      <parent link="${parent_link}" />
+      <child link="${frame}_mount" />
+    </joint>
+
+    <link name="${frame}_mount">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <!-- Origin of this mesh is the base of the bracket. -->
+          <mesh filename="file://$(find dynobot_description)/meshes/hokuyo_ust10.stl" />
+        </geometry>
+        <material name="dark_grey" />
+      </visual>
+    </link>
+
+    <joint name="${frame}_joint" type="fixed">
+      <!-- This offset is from the base of the bracket to the LIDAR's focal point. -->
+      <origin xyz="0 0 0.0474" rpy="0 0 0" />
+      <parent link="${frame}_mount" />
+      <child link="${frame}_link" />
+    </joint>
+
+    <gazebo reference="${frame}_mount">
+      <material>Gazebo/DarkGrey</material>
+    </gazebo>
+
+  </xacro:macro>
+
+</robot>

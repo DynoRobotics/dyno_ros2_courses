@@ -1,26 +1,11 @@
 repositories:
-    # pytrees
-    py_trees:
+    # Dynobot 
+    dyno_gazebo_worlds:
         type: git
-        url: https://github.com/splintered-reality/py_trees.git 
-        version: release/2.2.x
-
-    py_trees_ros:
-        type: git
-        url: https://github.com/splintered-reality/py_trees_ros.git 
-        version: release/2.2.x
-
-    py_trees_ros_interfaces:
-        type: git
-        url: https://github.com/splintered-reality/py_trees_ros_interfaces.git
-        version: release/2.1.x
-
-    py_trees_js:
-        type: git
-        url: https://github.com/splintered-reality/py_trees_js.git
-        version: release/0.6.x
+        url: https://github.com/DynoRobotics/dyno_gazebo_worlds.git
+        version: main
         
-    py_trees_ros_viewer:
+    joy2twist:
         type: git
-        url: https://github.com/splintered-reality/py_trees_ros_viewer.git
-        version: release/0.2.x
+        url: https://github.com/husarion/joy2twist
+        version: ros2

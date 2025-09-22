@@ -64,3 +64,5 @@ l_turtle_random:
 l_turtle_charge:
     ros2 launch dynoturtle_bringup full.launch.py behavior_tree:=charge_tree
 
+l_dynobot:
+    ros2 launch dynobot_bringup full.launch.py
