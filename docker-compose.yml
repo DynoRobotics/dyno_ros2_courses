@@ -4,7 +4,7 @@ services:
     image: ros2_vscode
     build:
       context: .
-      dockerfile: .devcontainer/Dockerfile_gazebo
+      dockerfile: .devcontainer/Dockerfile
     # network_mode: host
     environment:
       SDL_VIDEODRIVER: x11
@@ -12,9 +12,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /tmp/.X11-unix:/tmp/.X11-unix
-      # - ./:/home/ubuntu/ws 
-      - ./:/home/ros/src 
-      
+      - ./:/home/ubuntu/ws 
 
     stdin_open: true
     privileged: true
@@ -25,10 +23,10 @@ services:
     restart: always
     ports:
       - 5184:5184
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [compute,utility,graphics,display]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [compute,utility,graphics,display]

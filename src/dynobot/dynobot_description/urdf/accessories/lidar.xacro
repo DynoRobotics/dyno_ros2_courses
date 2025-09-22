@@ -1,9 +1,11 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
-  <xacro:macro name="lidar" params="frame topic parent_link min_angle max_angle min_range:=0.0 max_range:=100.0 *origin">
+  <xacro:macro name="lidar"
+    params="frame topic parent_link min_angle max_angle min_range:=0.0 max_range:=100.0 *origin">
 
     <!-- actual sample size = 2000 -->
-    <xacro:macro name="lslidar" params="frame:=laser_link topic:=scan sample_size:=720 update_rate:=10
+    <xacro:macro name="lslidar"
+      params="frame:=laser_link topic:=scan sample_size:=720 update_rate:=10
              min_range:=0.0 max_range:=100.0 robot_namespace:=/">
 
       <link name="${frame}_link">
@@ -18,11 +20,11 @@
 
       <gazebo reference="${frame}_link">
         <turnGravityOff>false</turnGravityOff>
-        <sensor type="ray" name="${frame}_link">
+        <sensor type="gpu_lidar" name="laser">
           <pose>0 0 0 0 0 0</pose>
           <visualize>false</visualize>
           <update_rate>${update_rate}</update_rate>
-          <ray>
+          <lidar>
             <scan>
               <horizontal>
                 <samples>${sample_size}</samples>
@@ -43,11 +45,12 @@
               <mean>0.0</mean>
               <stddev>0.001</stddev>
             </noise>
-          </ray>
+          </lidar>
+          <topic>${topic}</topic>
+          <gz_frame_id>${frame}_link</gz_frame_id>
 
-          <plugin name="gazebo_ros_${frame}"
-          filename="libgazebo_ros_ray_sensor.so">
-            <ros>
+
+          <!-- <ros>
               <remapping>~/out:=${topic}</remapping>
               <qos>
                 <topic name="${topic}">
@@ -60,14 +63,14 @@
             </ros>
             <frame_name>${frame}_link</frame_name>
             <robot_namespace>${robot_namespace}</robot_namespace>
-            <output_type>sensor_msgs/LaserScan</output_type>
-          </plugin>
+            <output_type>sensor_msgs/LaserScan</output_type> -->
 
         </sensor>
       </gazebo>
     </xacro:macro>
 
-    <xacro:lslidar frame="${frame}" topic="${topic}" min_range="${min_range}" max_range="${max_range}"/>
+    <xacro:lslidar frame="${frame}" topic="${topic}" min_range="${min_range}"
+      max_range="${max_range}" />
 
     <joint name="${frame}_mount_joint" type="fixed">
       <xacro:insert_block name="origin" />

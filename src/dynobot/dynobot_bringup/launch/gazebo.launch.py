@@ -15,14 +15,16 @@ def generate_launch_description():
     pkg_dynobot_gazebo_worlds = get_package_share_directory("dynobot_gazebo_worlds")
 
     pkg_dynobot_bringup = get_package_share_directory("dynobot_bringup")
-    pkg_gazebo_ros = get_package_share_directory("gazebo_ros")
+    pkg_gazebo_ros = get_package_share_directory("ros_gz_sim")
+
+    bridge_params = os.path.join(pkg_dynobot_bringup, "params", "gz_bridge.yaml")
 
     # Launch args
     use_sim_time = LaunchConfiguration("use_sim_time", default=True)
     world_name = LaunchConfiguration(
         "world_name",
-        default=["kontor", ".world"],  ## OFFICE SCAN
-        # default=["basic", ".world"],  ## EMPTY WORLD
+        default=["office_gz.world"],  ## OFFICE SCAN
+        # default=["basic.world"],  ## EMPTY WORLD
     )
 
     gazebo_gui = LaunchConfiguration("headless", default=1)
@@ -42,27 +44,28 @@ def generate_launch_description():
     gazebo_models_path = os.path.join(pkg_dynobot_gazebo_worlds, "models")
     os.environ["GAZEBO_MODEL_PATH"] = gazebo_models_path
 
-    # Set Gazebo clock to higher rate to avoid slowing down the rest of the system
-    gazebo_params_path = os.path.join(pkg_dynobot_bringup, "params", "gazebo.yaml")
-
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(pkg_gazebo_ros, "launch", "gazebo.launch.py")
+            os.path.join(pkg_gazebo_ros, "launch", "gz_sim.launch.py")
         ),
         launch_arguments={
             "use_sim_time": use_sim_time,
             "gui": gazebo_gui,
             "gdb": "false",
             "verbose": "false",
-            "extra_gazebo_args": "--ros-args --params-file " + gazebo_params_path,
+            "gz_args": [
+                "-r -v2 ",
+                world_file,
+            ],  # v2: >= Info, v3 >= Debug, v4 >= Everything
+            "on_exit_shutdown": "true",
         }.items(),
     )
 
     spawn_entity = Node(
-        package="gazebo_ros",
-        executable="spawn_entity.py",
+        package="ros_gz_sim",
+        executable="create",
         arguments=[
-            "-entity",
+            "-name",
             "robot",
             "-x",
             "0.0",
@@ -78,10 +81,17 @@ def generate_launch_description():
         output="screen",
     )
 
+    ros_gz_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        arguments=["--ros-args", "-p", f"config_file:={bridge_params}"],
+    )
+
     ld = LaunchDescription()
     ld.add_action(world_launch_configuration)
     ld.add_action(gazebo)
     ld.add_action(spawn_entity)
+    ld.add_action(ros_gz_bridge)
 
     return ld
 

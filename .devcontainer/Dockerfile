@@ -60,6 +60,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python3-pip \
   ros-dev-tools \
   ros-jazzy-ament-* \
+  ros-jazzy-ros-gz \
   vim \
   ranger \
   htop \
@@ -120,11 +121,12 @@ RUN sudo rosdep init || echo "rosdep already initialized"
 
 WORKDIR $DEPENDENCIES_WS
 COPY ros_dependencies.repos ros_dependencies.repos
-# RUN sudo vcs import src < ros_dependencies.repos
-RUN bash -c "sudo apt-get update && \
-  rosdep update && \
-  rosdep install -q -y --from-paths src --ignore-src && \
-  sudo rm -rf /var/likb/apt/lists/*"
+RUN sudo vcs import src < ros_dependencies.repos
+RUN sudo bash -c "curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key | apt-key add - && \
+  apt-get update && \
+  rosdep update --rosdistro=$ROS_DISTRO && \
+  rosdep install --rosdistro=$ROS_DISTRO -q -y --from-paths src --ignore-src && \
+  rm -rf /var/lib/apt/lists/*"
 
 RUN sudo bash -c ". /opt/ros/jazzy/setup.bash && colcon build --merge-install --cmake-args -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE"
 

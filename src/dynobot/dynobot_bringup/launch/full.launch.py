@@ -63,7 +63,9 @@ def launch_setup(context, *args, **kwargs):
     kill_daemon()
     kill_ros_processes()
 
-    launch_dir = os.path.join(get_package_share_directory("dynobot_bringup"), "launch")
+    bringup_dir = get_package_share_directory("dynobot_bringup")
+    launch_dir = os.path.join(bringup_dir, "launch")
+    rviz_dir = os.path.join(bringup_dir, "rviz")
 
     use_sim_time = LaunchConfiguration("use_sim_time")
 
@@ -73,9 +75,7 @@ def launch_setup(context, *args, **kwargs):
         description="Use simulation (Gazebo) clock if true",
     )
 
-    rviz_config_file = PathJoinSubstitution(
-        [FindPackageShare("dynobot_bringup"), "rviz", "default.rviz"]
-    )
+    rviz_config_file = PathJoinSubstitution([rviz_dir, "default.rviz"])
 
     rviz = Node(
         package="rviz2",

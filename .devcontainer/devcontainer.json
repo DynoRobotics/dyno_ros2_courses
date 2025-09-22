@@ -6,10 +6,8 @@
   "runServices": [
     "ros2_vscode_dev"
   ],
-  // "remoteUser": "ubuntu",
-  // "workspaceFolder": "/home/ubuntu/ws",
-  "remoteUser": "ros",
-  "workspaceFolder": "/home/ros/src",
+  "remoteUser": "ubuntu",
+  "workspaceFolder": "/home/ubuntu/ws",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -27,7 +25,8 @@
         "ms-vscode.cpptools-extension-pack",
         "saoudrizwan.claude-dev",
         "bierner.markdown-mermaid",
-        "nefrob.vscode-just-syntax"
+        "nefrob.vscode-just-syntax",
+        "redhat.vscode-xml"
       ]
     }
   },
