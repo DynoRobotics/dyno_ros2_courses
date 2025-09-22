@@ -34,7 +34,7 @@ def generate_launch_description():
 
     joy2twist_params = os.path.join(bringup_dir, "params", "joy2twist.yaml")
 
-    # Get URDF via xacro with the current namespace
+    # Get URDF via xacro
     robot_description_content = Command(
         [
             PathJoinSubstitution([FindExecutable(name="xacro")]),

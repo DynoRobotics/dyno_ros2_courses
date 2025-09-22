@@ -24,7 +24,6 @@ def generate_launch_description():
     world_name = LaunchConfiguration(
         "world_name",
         default=["office_gz.world"],  ## OFFICE SCAN
-        # default=["basic.world"],  ## EMPTY WORLD
     )
 
     gazebo_gui = LaunchConfiguration("headless", default=1)
@@ -32,11 +31,6 @@ def generate_launch_description():
     # # Set the path to the world file
     world_file = PathJoinSubstitution(
         [pkg_dynobot_gazebo_worlds, "worlds", world_name]  ## OFFICE SCAN
-        # [
-        #     "/opt/dependencies_ws/src/dyno_gazebo_worlds",
-        #     "worlds",
-        #     world_name,
-        # ]  ## EMPTY WORLD
     )
     world_launch_configuration = SetLaunchConfiguration(name="world", value=world_file)
 
@@ -56,7 +50,7 @@ def generate_launch_description():
             "gz_args": [
                 "-r -v2 ",
                 world_file,
-            ],  # v2: >= Info, v3 >= Debug, v4 >= Everything
+            ],  # verbose-settings: v2: >= Info, v3 >= Debug, v4 >= Everything
             "on_exit_shutdown": "true",
         }.items(),
     )
