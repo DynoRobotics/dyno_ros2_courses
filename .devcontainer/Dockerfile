@@ -1,6 +1,5 @@
-###########################################
-# Base image
-###########################################
+# syntax=docker/dockerfile:1.7
+
 FROM ubuntu:24.04 AS base
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -65,8 +64,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   ranger \
   htop \
   tree \
-  just \
+  rsync \
   && rm -rf /var/lib/apt/lists/*
+
+# Install just
+RUN wget -qO- "https://github.com/casey/just/releases/download/1.40.0/just-1.40.0-$(uname --machine)-unknown-linux-musl.tar.gz" | tar xz -C /usr/local/bin/ just
 
 # Install node
 RUN curl -sL https://deb.nodesource.com/setup_20.x -o /tmp/nodesource_setup.sh \
@@ -83,8 +85,6 @@ RUN apt-get update \
   && chmod 0440 /etc/sudoers.d/$USERNAME \
   && rm -rf /var/lib/apt/lists/*
 
-USER $USERNAME
-
 ENV ROS_DISTRO=jazzy
 ENV AMENT_PREFIX_PATH=/opt/ros/jazzy
 ENV COLCON_PREFIX_PATH=/opt/ros/jazzy
@@ -94,6 +94,45 @@ ENV PYTHONPATH=/opt/ros/jazzy/lib/python3.10/site-packages
 ENV ROS_PYTHON_VERSION=3
 ENV ROS_VERSION=2
 ENV DEBIAN_FRONTEND=
+
+
+# Add rust support to ROS2
+USER $USERNAME
+
+# Install rustup toolchain to a shared location (not per-user)
+ENV CARGO_HOME=/home/$USERNAME/.cargo \
+  RUSTUP_HOME=/home/$USERNAME/.rustup \
+  PATH=/home/$USERNAME/.cargo/bin:$PATH
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+  | sh -s -- -y --default-toolchain 1.84 && \
+  rustup component add rustfmt clippy rust-analyzer
+
+# Back to root, just inherit the PATH so root can use the user’s install
+# Disallow for now
+USER root
+ENV PATH=/home/$USERNAME/.cargo/bin:$PATH
+
+RUN pip install --break-system-packages \
+  git+https://github.com/colcon/colcon-cargo.git \
+  git+https://github.com/colcon/colcon-ros-cargo.git
+
+USER $USERNAME
+ARG ROS2_RUST_COMMIT=v0.5.1-fixed-repos
+ENV RUST_WS /opt/ros2_rust
+RUN /bin/bash -c "source /opt/ros/jazzy/setup.bash && echo 'Ament path:' $AMENT_PREFIX_PATH && \
+  sudo mkdir -p ${RUST_WS}/src/ros2_rust && \
+  sudo chown -R $USERNAME:$USERNAME ${RUST_WS} && \
+  cd ${RUST_WS}/src/ros2_rust && \
+  git init && \
+  git remote add origin https://github.com/DynoRobotics/ros2_rust.git && \
+  git fetch --depth=1 origin ${ROS2_RUST_COMMIT} && \
+  git checkout FETCH_HEAD && \
+  cd ${RUST_WS} && \
+  vcs import src < src/ros2_rust/ros2_rust_jazzy.repos && \
+  source /opt/ros/jazzy/setup.bash && colcon build --merge-install"
+
+USER $USERNAME
 
 # Set up autocompletion for user
 RUN sudo apt-get update && sudo apt-get install -y git bash-completion \
@@ -128,23 +167,33 @@ RUN sudo bash -c "curl -sSL https://raw.githubusercontent.com/ros/rosdistro/mast
   rosdep install --rosdistro=$ROS_DISTRO -q -y --from-paths src --ignore-src && \
   rm -rf /var/lib/apt/lists/*"
 
-RUN sudo bash -c ". /opt/ros/jazzy/setup.bash && colcon build --merge-install --cmake-args -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE"
+RUN sudo bash -c ". $RUST_WS/install/setup.bash && colcon build --merge-install --cmake-args -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE"
+
+# Install cache of ROS2 project specific package dependencies
+USER $USERNAME
+WORKDIR $WS
+
+COPY --chown=$USERNAME .devcontainer/pkg_cache/ /home/ubuntu/pkg_cache/
+RUN bash -c "sudo apt-get update && \
+  . $DEPENDENCIES_WS/install/setup.bash && \
+  export PIP_BREAK_SYSTEM_PACKAGES=1 && \
+  rosdep update && \
+  rosdep install --from-paths /home/ubuntu/pkg_cache --ignore-src -y && \
+  rm -r /home/ubuntu/pkg_cache && \
+  sudo rm -rf /var/lib/apt/lists/*"
+
+# Create source folder
+RUN mkdir ws
+
+# Install project specific dependencies
+COPY --chown=$USERNAME . ws
 
 # Install PIP requirements
 COPY requirements.txt /tmp/
 RUN python3 -m pip install --no-cache-dir --break-system-packages -r /tmp/requirements.txt
 
-ENV DEBIAN_FRONTEND=dialog
-
-# Create source folder
-WORKDIR $WS
-RUN mkdir ws
-
-# Install ros dependencies
-COPY --chown=$USERNAME . ws
-
+# Install ROS2 project specific package dependencies (that are not already installed in cache step)
 USER $USERNAME
-
 RUN bash -c "sudo apt-get update && \
   . $DEPENDENCIES_WS/install/setup.bash && \
   export PIP_BREAK_SYSTEM_PACKAGES=1 && \
@@ -154,6 +203,8 @@ RUN bash -c "sudo apt-get update && \
 
 # Build ros2 workspace
 RUN /bin/bash -c 'source $DEPENDENCIES_WS/install/setup.bash && cd /home/ubuntu && colcon build --merge-install --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE'
+
+ENV DEBIAN_FRONTEND=dialog
 
 # Add source to bashrc
 RUN echo "if [ -f /home/ubuntu/install/setup.bash ]; then source /home/ubuntu/install/setup.bash; fi" >> /home/ubuntu/.bashrc

@@ -12,7 +12,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /tmp/.X11-unix:/tmp/.X11-unix
-      - ./:/home/ubuntu/ws 
+      - ./:/home/ubuntu/ws
 
     stdin_open: true
     privileged: true
@@ -23,7 +23,6 @@ services:
     restart: always
     ports:
       - 5184:5184
-
     ## If you have setup Docker to use NVIDIA GPUs, uncomment the following lines
     # deploy:
     #   resources:

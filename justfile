@@ -29,6 +29,20 @@ rebuild:
     source /opt/dependencies_ws/install/setup.bash && \
     colcon build --merge-install --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
+# Rebuild the ROS 2 package.xml cache
+pkg-cache-update:
+    rm -rf .devcontainer/pkg_cache/src
+    mkdir -p .devcontainer/pkg_cache/src
+    cd src && \
+      find . -type f -name package.xml -print0 | \
+      while IFS= read -r -d '' f; do \
+        install -Dm0644 "$f" "../.devcontainer/pkg_cache/src/${f#./}"; \
+      done
+    echo ">>> pkg_cache refreshed with package.xml files from ./src"
+
+pkg-cache-remove:
+    rm -rf .devcontainer/pkg_cache/src
+
 lint:
     ./check_in_container.sh && \
     ament_flake8 && \
