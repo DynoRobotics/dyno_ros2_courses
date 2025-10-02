@@ -4,6 +4,15 @@ build:
     ./check_in_container.sh && \
     cd .. && colcon build --merge-install --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
+docker_build_base:
+    docker build -f .devcontainer/Dockerfile --target local-base -t dynorobotics/ros2-base-dev:jazzy .devcontainer
+
+docker_push_base:
+    docker push dynorobotics/ros2-base-dev:jazzy
+
+docker_build:
+    docker compose build
+
 install_dependencies:
     ./check_in_container.sh && \
     bash -c 'sudo apt-get update && rosdep install --from-paths src --ignore-src -y' && \

@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: .devcontainer/Dockerfile
+      target: app
     # network_mode: host
     environment:
       SDL_VIDEODRIVER: x11
@@ -19,7 +20,7 @@ services:
     group_add:
       - video
     tty: true
-    command: tail -f /dev/null
+    command: sudo -u ubuntu bash -c "source /opt/ros/jazzy/setup.bash && ros2 run rmw_zenoh_cpp rmw_zenohd"  # tail -f /dev/null
     restart: always
     ports:
       - 5184:5184

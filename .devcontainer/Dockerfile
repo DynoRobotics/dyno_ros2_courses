@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1.7
+ARG BASE_IMAGE=dynorobotics/ros2-base-dev:jazzy
 
-FROM ubuntu:24.04 AS base
+FROM ubuntu:24.04 AS local-base
+ARG USERNAME=ubuntu
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -10,7 +12,7 @@ RUN apt-get update && apt-get install -y \
   && locale-gen en_US.UTF-8 \
   && update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 \
   && rm -rf /var/lib/apt/lists/*
-ENV LANG en_US.UTF-8
+ENV LANG=en_US.UTF-8
 
 # Install timezone
 RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime \
@@ -31,54 +33,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   sudo \
   software-properties-common \
   wget \
-  && rm -rf /var/lib/apt/lists/*
-
-# Install ROS2
-
-RUN export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F\" '{print $4}') \
-  && curl -L -o /tmp/ros2-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo $VERSION_CODENAME)_all.deb" \
-  && sudo dpkg -i /tmp/ros2-apt-source.deb
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-  ros-jazzy-desktop \
-  python3-argcomplete \
-  ros-jazzy-rmw-zenoh-cpp \
-  && rm -rf /var/lib/apt/lists/*
-
-
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y --no-install-recommends \
-  bash-completion \
-  build-essential \
-  cmake \
-  gdb \
-  gdbserver \
-  git \
-  openssh-client \
-  python3-argcomplete \
   python3-pip \
-  ros-dev-tools \
-  ros-jazzy-ament-* \
-  ros-jazzy-ros-gz \
-  vim \
-  ranger \
-  htop \
-  tree \
-  rsync \
-  && rm -rf /var/lib/apt/lists/*
-
-# Install just
-RUN wget -qO- "https://github.com/casey/just/releases/download/1.40.0/just-1.40.0-$(uname --machine)-unknown-linux-musl.tar.gz" | tar xz -C /usr/local/bin/ just
-
-# Install node
-RUN curl -sL https://deb.nodesource.com/setup_20.x -o /tmp/nodesource_setup.sh \
-  && apt update \
-  && bash /tmp/nodesource_setup.sh \
-  && apt install nodejs \
   && rm -rf /var/lib/apt/lists/*
 
 # Make default user not need sudo password
-ARG USERNAME=ubuntu
+
 RUN apt-get update \
   && apt-get install -y sudo \
   && echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME \
@@ -95,6 +54,18 @@ ENV ROS_PYTHON_VERSION=3
 ENV ROS_VERSION=2
 ENV DEBIAN_FRONTEND=
 
+# Install ROS2
+RUN export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F\" '{print $4}') \
+  && curl -L -o /tmp/ros2-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo $VERSION_CODENAME)_all.deb" \
+  && sudo dpkg -i /tmp/ros2-apt-source.deb
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  ros-jazzy-desktop \
+  python3-argcomplete \
+  ros-jazzy-rmw-zenoh-cpp \
+  ros-dev-tools \
+  ros-jazzy-ament-* \
+  ros-jazzy-ros-gz \
+  && rm -rf /var/lib/apt/lists/*
 
 # Add rust support to ROS2
 USER $USERNAME
@@ -119,7 +90,7 @@ RUN pip install --break-system-packages \
 
 USER $USERNAME
 ARG ROS2_RUST_COMMIT=v0.5.1-fixed-repos
-ENV RUST_WS /opt/ros2_rust
+ENV RUST_WS=/opt/ros2_rust
 RUN /bin/bash -c "source /opt/ros/jazzy/setup.bash && echo 'Ament path:' $AMENT_PREFIX_PATH && \
   sudo mkdir -p ${RUST_WS}/src/ros2_rust && \
   sudo chown -R $USERNAME:$USERNAME ${RUST_WS} && \
@@ -140,6 +111,34 @@ RUN sudo apt-get update && sudo apt-get install -y git bash-completion \
   && echo "if [ -f /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash ]; then source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash; fi" >> /home/$USERNAME/.bashrc \
   && sudo rm -rf /var/lib/apt/lists/*
 
+# Install tools
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  bash-completion \
+  build-essential \
+  cmake \
+  gdb \
+  gdbserver \
+  git \
+  openssh-client \
+  python3-argcomplete \
+  vim \
+  ranger \
+  htop \
+  tree \
+  rsync \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install just
+RUN wget -qO- "https://github.com/casey/just/releases/download/1.40.0/just-1.40.0-$(uname --machine)-unknown-linux-musl.tar.gz" | tar xz -C /usr/local/bin/ just
+
+# Install node
+RUN curl -sL https://deb.nodesource.com/setup_20.x -o /tmp/nodesource_setup.sh \
+  && apt update \
+  && bash /tmp/nodesource_setup.sh \
+  && apt install nodejs \
+  && rm -rf /var/lib/apt/lists/*
+
 RUN sudo adduser ubuntu dialout
 
 ENV DEBIAN_FRONTEND=
@@ -147,13 +146,20 @@ ENV AMENT_CPPCHECK_ALLOW_SLOW_VERSIONS=1
 
 ARG WORKSPACE=/home/${USERNAME}
 
-ENV DEPENDENCIES_WS /opt/dependencies_ws
+ENV DEPENDENCIES_WS=/opt/dependencies_ws
 RUN sudo mkdir -p $DEPENDENCIES_WS/src
 
 ENV HOME=/home/${USERNAME}
 ENV WS=${WORKSPACE}
 
 ARG CMAKE_BUILD_TYPE=RelWithDebInfo
+
+# --- App (default = remote base) ----------------------------------------------
+# Default points to Docker Hub image.
+# Can be overridden with: --build-arg BASE_IMAGE=local-base
+
+FROM ${BASE_IMAGE} AS app
+ARG USERNAME=ubuntu
 
 # Build ROS 2 source dependencies
 RUN sudo rosdep init || echo "rosdep already initialized"
@@ -202,6 +208,7 @@ RUN bash -c "sudo apt-get update && \
   sudo rm -rf /var/lib/apt/lists/*"
 
 # Build ros2 workspace
+USER ubuntu
 RUN /bin/bash -c 'source $DEPENDENCIES_WS/install/setup.bash && cd /home/ubuntu && colcon build --merge-install --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE'
 
 ENV DEBIAN_FRONTEND=dialog
