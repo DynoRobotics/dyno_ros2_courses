@@ -1,0 +1,15 @@
+eclipse-zenoh>=1.5.0
+pycdr2>=0.1.0
+
+[dev]
+black>=21.0
+flake8>=3.8
+mypy>=0.800
+pytest-cov>=2.0
+pytest>=6.0
+
+[ros2]
+builtin_interfaces
+geometry_msgs
+rcl_interfaces
+rclpy>=3.0

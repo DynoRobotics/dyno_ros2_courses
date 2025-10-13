@@ -1,0 +1,3 @@
+[console_scripts]
+ros2-zenoh-pub = ros2_zenoh_python.examples.publisher_example:main
+ros2-zenoh-sub = ros2_zenoh_python.examples.subscriber_example:main
