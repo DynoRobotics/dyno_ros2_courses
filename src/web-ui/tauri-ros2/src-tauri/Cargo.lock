@@ -5473,6 +5473,10 @@ name = "diagnostic_msgs"
 version = "5.3.6"
 
 [[patch.unused]]
+name = "dynoturtle_interfaces"
+version = "0.0.0"
+
+[[patch.unused]]
 name = "example_interfaces"
 version = "0.12.0"
 

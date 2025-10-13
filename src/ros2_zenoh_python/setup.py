@@ -1,0 +1,62 @@
+"""
+Setup script for ros2_zenoh_python package.
+"""
+
+from setuptools import setup, find_packages
+
+with open("README.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
+
+setup(
+    name="ros2_zenoh_python",
+    version="0.1.0",
+    author="ROS 2 Zenoh Team",
+    author_email="zenoh@zettascale.tech",
+    description="ROS 2-compatible Python package using Zenoh as transport",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://github.com/eclipse-zenoh/ros2_zenoh_python",
+    packages=find_packages(),
+    classifiers=[
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: Apache Software License",
+        "License :: OSI Approved :: Eclipse Public License 2.0 (EPL-2.0)",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Topic :: Software Development :: Libraries :: Python Modules",
+        "Topic :: System :: Networking",
+    ],
+    python_requires=">=3.8",
+    install_requires=[
+        "eclipse-zenoh>=1.5.0",
+        "pycdr2>=0.1.0",
+        "ros2-interfaces-python>=0.1.0",
+    ],
+    extras_require={
+        "dev": [
+            "pytest>=6.0",
+            "pytest-cov>=2.0",
+            "black>=21.0",
+            "flake8>=3.8",
+            "mypy>=0.800",
+        ],
+        "ros2": [
+            "rclpy>=3.0",
+            "geometry_msgs",
+            "builtin_interfaces",
+            "rcl_interfaces",
+        ],
+    },
+    entry_points={
+        "console_scripts": [
+            "ros2-zenoh-pub=ros2_zenoh_python.examples.publisher_example:main",
+            "ros2-zenoh-sub=ros2_zenoh_python.examples.subscriber_example:main",
+        ],
+    },
+)

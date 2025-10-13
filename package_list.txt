@@ -1,0 +1,26 @@
+# Common ROS 2 message packages
+# This file contains a list of ROS 2 packages to process for simplified types
+
+# Core geometry messages
+geometry_msgs
+
+# Standard messages
+std_msgs
+
+# Built-in interfaces
+builtin_interfaces
+
+# Navigation messages
+nav_msgs
+
+# Sensor messages
+sensor_msgs
+
+# Visualization messages
+visualization_msgs
+
+# Action messages
+action_msgs
+
+# Service messages
+rcl_interfaces
