@@ -5,7 +5,7 @@ build:
     cd .. && colcon build --merge-install --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
 docker_build_base:
-    docker build -f .devcontainer/Dockerfile --target local-base -t dynorobotics/ros2-base-dev:jazzy .devcontainer
+    docker buildx build -f .devcontainer/Dockerfile --target local-base -t dynorobotics/ros2-base-dev:jazzy .devcontainer
 
 docker_push_base:
     docker push dynorobotics/ros2-base-dev:jazzy
