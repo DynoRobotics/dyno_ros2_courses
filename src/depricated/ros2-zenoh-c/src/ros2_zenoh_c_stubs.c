@@ -9,6 +9,26 @@
 #ifndef ZENOH_AVAILABLE
 // Stub implementations when Zenoh is not available
 
+ros2_zenoh_ret_t ros2_zenoh_node_init(ros2_zenoh_node_t** node, const char* name) {
+    (void)node; (void)name;
+    return ROS2_ZENOH_ERROR_ZENOH;  // Zenoh not available
+}
+
+ros2_zenoh_ret_t ros2_zenoh_node_destroy(ros2_zenoh_node_t* node) {
+    (void)node;
+    return ROS2_ZENOH_ERROR_ZENOH;  // Zenoh not available
+}
+
+const char* ros2_zenoh_get_error_string(ros2_zenoh_ret_t ret) {
+    switch(ret) {
+        case ROS2_ZENOH_OK: return "OK";
+        case ROS2_ZENOH_ERROR_ZENOH: return "Zenoh not available";
+        case ROS2_ZENOH_ERROR_MEMORY: return "Memory error";
+        case ROS2_ZENOH_ERROR_INVALID_ARGUMENT: return "Invalid argument";
+        default: return "Unknown error";
+    }
+}
+
 ros2_zenoh_ret_t ros2_zenoh_create_publisher(
     ros2_zenoh_node_t* node,
     ros2_zenoh_publisher_t** publisher,

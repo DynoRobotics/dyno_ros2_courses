@@ -3,3 +3,5 @@ collaborative-individuation-collective
 .pnpm-store
 src/rmw_zenoh
 ignore
+src/zenoh/Micro-CDR
+src/zenoh/zenoh-pico

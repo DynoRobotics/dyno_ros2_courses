@@ -34,7 +34,7 @@ run_tests:
 rebuild:
     ./check_in_container.sh && \
     cd .. && \
-    rm -r build/ install/ && \
+    rm -rf build/ install/ && \
     source /opt/dependencies_ws/install/setup.bash && \
     colcon build --merge-install --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
