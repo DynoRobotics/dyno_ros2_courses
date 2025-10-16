@@ -34,11 +34,23 @@ from .logger import Logger
 
 # Import interface types from the separate package
 try:
-    from ros2_interfaces_python import *
+    from ros2_interfaces_python.geometry_msgs.msg.geometry_msgs import Vector3, Twist, Pose, Point, Quaternion, PoseStamped
+    from ros2_interfaces_python.std_msgs.msg.std_msgs import Header
+    from ros2_interfaces_python.builtin_interfaces.msg.builtin_interfaces import Time, Duration
     INTERFACES_AVAILABLE = True
 except ImportError:
     INTERFACES_AVAILABLE = False
     print("Warning: ros2_interfaces_python not available. Install it for message type support.")
+    # Define dummy types for when interfaces are not available
+    Vector3 = None
+    Twist = None
+    Pose = None
+    Point = None
+    Quaternion = None
+    PoseStamped = None
+    Header = None
+    Time = None
+    Duration = None
 
 __version__ = "0.1.0"
 __all__ = [

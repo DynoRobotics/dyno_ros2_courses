@@ -3,9 +3,18 @@ Setup script for ros2_zenoh_python package.
 """
 
 from setuptools import setup, find_packages
+import os
 
-with open("README.md", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
+# Get the directory containing this setup.py file
+here = os.path.abspath(os.path.dirname(__file__))
+
+# Read the README file if it exists
+readme_path = os.path.join(here, "README.md")
+if os.path.exists(readme_path):
+    with open(readme_path, encoding="utf-8") as f:
+        long_description = f.read()
+else:
+    long_description = "ROS 2-compatible Python package using Zenoh as transport"
 
 setup(
     name="ros2_zenoh_python",
@@ -53,10 +62,10 @@ setup(
             "rcl_interfaces",
         ],
     },
-    entry_points={
-        "console_scripts": [
-            "ros2-zenoh-pub=ros2_zenoh_python.examples.publisher_example:main",
-            "ros2-zenoh-sub=ros2_zenoh_python.examples.subscriber_example:main",
-        ],
-    },
+    # entry_points={
+    #     "console_scripts": [
+    #         "ros2-zenoh-pub=examples.publisher_example:main",
+    #         "ros2-zenoh-sub=examples.subscriber_example:main",
+    #     ],
+    # },
 )

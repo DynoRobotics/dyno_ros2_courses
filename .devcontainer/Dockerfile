@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 ARG BASE_IMAGE=dynorobotics/ros2-base-dev:jazzy
 
-FROM ubuntu:24.04 AS local-base
+FROM ubuntu:24.04@sha256:a08e551cb33850e4740772b38217fc1796a66da2506d312abe51acda354ff061 AS local-base
 ARG USERNAME=ubuntu
 
 ENV DEBIAN_FRONTEND=noninteractive

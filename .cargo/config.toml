@@ -1,0 +1,104 @@
+[patch.crates-io.rust_interfaces]
+path = "/home/ubuntu/install/share/rust_interfaces/rust"
+
+[patch.crates-io.dynoturtle_interfaces]
+path = "/home/ubuntu/install/share/dynoturtle_interfaces/rust"
+
+[patch.crates-io.rust_pubsub]
+path = "/opt/ros2_rust/install/share/rust_pubsub/rust"
+
+[patch.crates-io.stereo_msgs]
+path = "/opt/ros2_rust/install/share/stereo_msgs/rust"
+
+[patch.crates-io.examples_logging_demo]
+path = "/opt/ros2_rust/install/share/examples_logging_demo/rust"
+
+[patch.crates-io.examples_rclrs_message_demo]
+path = "/opt/ros2_rust/install/share/examples_rclrs_message_demo/rust"
+
+[patch.crates-io.diagnostic_msgs]
+path = "/opt/ros2_rust/install/share/diagnostic_msgs/rust"
+
+[patch.crates-io.shape_msgs]
+path = "/opt/ros2_rust/install/share/shape_msgs/rust"
+
+[patch.crates-io.type_description_interfaces]
+path = "/opt/ros2_rust/install/share/type_description_interfaces/rust"
+
+[patch.crates-io.service_msgs]
+path = "/opt/ros2_rust/install/share/service_msgs/rust"
+
+[patch.crates-io.geometry_msgs]
+path = "/opt/ros2_rust/install/share/geometry_msgs/rust"
+
+[patch.crates-io.builtin_interfaces]
+path = "/opt/ros2_rust/install/share/builtin_interfaces/rust"
+
+[patch.crates-io.statistics_msgs]
+path = "/opt/ros2_rust/install/share/statistics_msgs/rust"
+
+[patch.crates-io.test_msgs]
+path = "/opt/ros2_rust/install/share/test_msgs/rust"
+
+[patch.crates-io.std_msgs]
+path = "/opt/ros2_rust/install/share/std_msgs/rust"
+
+[patch.crates-io.rclrs]
+path = "/opt/ros2_rust/install/share/rclrs/rust"
+
+[patch.crates-io.lifecycle_msgs]
+path = "/opt/ros2_rust/install/share/lifecycle_msgs/rust"
+
+[patch.crates-io.unique_identifier_msgs]
+path = "/opt/ros2_rust/install/share/unique_identifier_msgs/rust"
+
+[patch.crates-io.example_interfaces]
+path = "/opt/ros2_rust/install/share/example_interfaces/rust"
+
+[patch.crates-io.rosidl_runtime_rs]
+path = "/opt/ros2_rust/install/share/rosidl_runtime_rs/rust"
+
+[patch.crates-io.examples_parameter_demo]
+path = "/opt/ros2_rust/install/share/examples_parameter_demo/rust"
+
+[patch.crates-io.examples_worker_demo]
+path = "/opt/ros2_rust/install/share/examples_worker_demo/rust"
+
+[patch.crates-io.composition_interfaces]
+path = "/opt/ros2_rust/install/share/composition_interfaces/rust"
+
+[patch.crates-io.nav_msgs]
+path = "/opt/ros2_rust/install/share/nav_msgs/rust"
+
+[patch.crates-io.sensor_msgs]
+path = "/opt/ros2_rust/install/share/sensor_msgs/rust"
+
+[patch.crates-io.std_srvs]
+path = "/opt/ros2_rust/install/share/std_srvs/rust"
+
+[patch.crates-io.rcl_interfaces]
+path = "/opt/ros2_rust/install/share/rcl_interfaces/rust"
+
+[patch.crates-io.trajectory_msgs]
+path = "/opt/ros2_rust/install/share/trajectory_msgs/rust"
+
+[patch.crates-io.rclrs_example_msgs]
+path = "/opt/ros2_rust/install/share/rclrs_example_msgs/rust"
+
+[patch.crates-io.examples_rclrs_minimal_client_service]
+path = "/opt/ros2_rust/install/share/examples_rclrs_minimal_client_service/rust"
+
+[patch.crates-io.visualization_msgs]
+path = "/opt/ros2_rust/install/share/visualization_msgs/rust"
+
+[patch.crates-io.examples_rclrs_minimal_pub_sub]
+path = "/opt/ros2_rust/install/share/examples_rclrs_minimal_pub_sub/rust"
+
+[patch.crates-io.actionlib_msgs]
+path = "/opt/ros2_rust/install/share/actionlib_msgs/rust"
+
+[patch.crates-io.rosgraph_msgs]
+path = "/opt/ros2_rust/install/share/rosgraph_msgs/rust"
+
+[patch.crates-io.action_msgs]
+path = "/opt/ros2_rust/install/share/action_msgs/rust"

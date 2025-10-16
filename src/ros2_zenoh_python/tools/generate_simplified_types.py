@@ -10,6 +10,7 @@ import os
 import sys
 import argparse
 import re
+import hashlib
 from pathlib import Path
 from typing import Dict, List, Set, Optional, Any
 from dataclasses import dataclass, field
@@ -36,6 +37,7 @@ class MessageInfo:
     fields: List[FieldInfo] = field(default_factory=list)
     dependencies: Set[str] = field(default_factory=set)
     file_path: str = ""
+    type_hash: str = ""
 
 
 class ROS2InterfaceParser:
@@ -125,12 +127,25 @@ class ROS2InterfaceParser:
         if not line:
             return None
         
+        # Skip constant definitions (lines with = that are not field definitions)
+        if '=' in line:
+            # Check if this looks like a constant definition
+            parts = line.split()
+            if len(parts) >= 3:
+                # Check if it's a constant like "uint8 DEBUG=10" or "uint8 PARAMETER_NOT_SET=0"
+                if parts[1].endswith('=') or (len(parts) > 2 and parts[2] == '='):
+                    return None
+        
         parts = line.split()
         if len(parts) < 2:
             return None
         
         field_type = parts[0]
         field_name = parts[1]
+        
+        # Skip if field name contains = (this is a constant definition)
+        if '=' in field_name:
+            return None
         
         # Handle arrays
         is_array = False
@@ -168,14 +183,67 @@ class ROS2InterfaceParser:
             is_builtin=is_builtin
         )
     
-    def find_msg_files(self, directory: str) -> List[str]:
-        """Find all .msg files in a directory tree."""
-        msg_files = []
-        for root, dirs, files in os.walk(directory):
-            for file in files:
-                if file.endswith('.msg'):
-                    msg_files.append(os.path.join(root, file))
-        return msg_files
+def find_ros2_msg_files() -> List[str]:
+    """Find ROS 2 message files from the environment."""
+    msg_files = []
+    
+    # Method 1: Use ROS 2 environment variables
+    ros_distro = os.environ.get('ROS_DISTRO')
+    if ros_distro:
+        # Common ROS 2 installation paths
+        possible_paths = [
+            f'/opt/ros/{ros_distro}',
+            f'/usr/local/ros2',
+            f'/opt/ros2',
+            os.path.expanduser(f'~/ros2_{ros_distro}'),
+            os.path.expanduser('~/ros2_ws/install'),
+            os.path.expanduser('~/ros2_ws/install'),
+        ]
+        
+        for path in possible_paths:
+            if os.path.exists(path):
+                for root, dirs, files in os.walk(path):
+                    for file in files:
+                        if file.endswith('.msg'):
+                            msg_files.append(os.path.join(root, file))
+    
+    # Method 2: Search Python site-packages for ROS 2 packages
+    import site
+    for site_dir in site.getsitepackages() + [site.getusersitepackages()]:
+        if site_dir and os.path.exists(site_dir):
+            for item in os.listdir(site_dir):
+                if '_msgs' in item and os.path.isdir(os.path.join(site_dir, item)):
+                    # Look for .msg files in the package
+                    pkg_path = os.path.join(site_dir, item)
+                    for root, dirs, files in os.walk(pkg_path):
+                        for file in files:
+                            if file.endswith('.msg'):
+                                msg_files.append(os.path.join(root, file))
+    
+    # Method 3: Use ros2 pkg list if available
+    try:
+        import subprocess
+        result = subprocess.run(['ros2', 'pkg', 'list'], capture_output=True, text=True)
+        if result.returncode == 0:
+            packages = result.stdout.strip().split('\n')
+            for pkg in packages:
+                if '_msgs' in pkg:
+                    try:
+                        # Get package path
+                        result = subprocess.run(['ros2', 'pkg', 'prefix', pkg], capture_output=True, text=True)
+                        if result.returncode == 0:
+                            pkg_path = result.stdout.strip()
+                            msg_dir = os.path.join(pkg_path, 'share', pkg, 'msg')
+                            if os.path.exists(msg_dir):
+                                for file in os.listdir(msg_dir):
+                                    if file.endswith('.msg'):
+                                        msg_files.append(os.path.join(msg_dir, file))
+                    except:
+                        continue
+    except:
+        pass
+    
+    return list(set(msg_files))  # Remove duplicates
 
 
 class SimplifiedTypeGenerator:
@@ -189,6 +257,28 @@ class SimplifiedTypeGenerator:
             'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'string',
             'wstring', 'time', 'duration'
         }
+        
+        # Load actual ROS 2 hashes
+        self.ros2_hashes = self._load_ros2_hashes()
+    
+    def _load_ros2_hashes(self) -> Dict[str, str]:
+        """Load actual ROS 2 hashes from the extracted file."""
+        try:
+            # Try to import the generated hashes
+            import sys
+            import os
+            hash_file_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src', 'ros2_interfaces_python')
+            sys.path.insert(0, hash_file_path)
+            from ros2_message_hashes import ROS2_MESSAGE_HASHES
+            print(f"✅ Loaded {len(ROS2_MESSAGE_HASHES)} ROS 2 message hashes from {hash_file_path}")
+            return ROS2_MESSAGE_HASHES
+        except ImportError:
+            # Fallback to some common hashes
+            return {
+                'geometry_msgs.msg.Twist': 'RIHS01_9c45bf16fe0983d80e3cfe750d6835843d265a9a6c46bd2e609fcddde6fb8d2a',
+                'geometry_msgs.msg.Vector3': 'RIHS01_cc12fe83e4c02719f1ce8070bfd14aecd40f75a96696a67a2a1f37f7dbb0765d',
+                'std_msgs.msg.Header': 'RIHS01_f49fb3ae2cf070f793645ff749683ac6b06203e41c891e17701b1cb597ce6a01',
+            }
     
     def generate_message_class(self, message_info: MessageInfo) -> str:
         """Generate a simplified Python class for a message."""
@@ -202,13 +292,40 @@ class SimplifiedTypeGenerator:
             field_definitions.append(f"    {field.name}: {python_type} = {default_value}")
         
         # Generate the class
+        message_type_key = f"{message_info.package}.msg.{class_name}"
+        ros2_hash = self.ros2_hashes.get(message_type_key, "RIHS01_" + "0" * 64)
+        
+        # Try alternative naming convention with underscores if hash not found
+        if ros2_hash == "RIHS01_" + "0" * 64:
+            # Convert CamelCase to snake_case for ROS 2 naming convention
+            import re
+            snake_case_name = re.sub(r'(?<!^)(?=[A-Z])', '_', class_name)
+            alt_message_type_key = f"{message_info.package}.msg.{snake_case_name}"
+            ros2_hash = self.ros2_hashes.get(alt_message_type_key, "RIHS01_" + "0" * 64)
+        
         class_code = f'''@dataclass
 class {class_name}:
     """Simplified {message_info.package}.msg.{class_name} message."""
+    
+    # ROS message type hash (from actual ROS 2 generated code)
+    TYPE_HASH: str = "{ros2_hash}"
 '''
         
         if field_definitions:
             class_code += '\n'.join(field_definitions)
+            
+            # Add __post_init__ method for None fields
+            none_fields = []
+            for field in message_info.fields:
+                if not field.is_builtin and field.type not in self.builtin_types:
+                    none_fields.append(field)
+            
+            if none_fields:
+                class_code += "\n    \n    def __post_init__(self):\n"
+                for field in none_fields:
+                    field_type = self._get_base_python_type(field.type)
+                    class_code += f"        if self.{field.name} is None:\n"
+                    class_code += f"            self.{field.name} = {field_type}()\n"
         else:
             class_code += "    pass"
         
@@ -217,12 +334,18 @@ class {class_name}:
     def _get_python_type(self, field: FieldInfo) -> str:
         """Get the Python type for a field."""
         if field.is_array:
-            if field.is_bounded_array:
-                return f"List[{self._get_base_python_type(field.type)}]"
+            base_type = self._get_base_python_type(field.type)
+            # Use string annotations for non-builtin types to avoid forward reference issues
+            if not field.is_builtin and field.type not in self.builtin_types:
+                return f"List['{base_type}']"
             else:
-                return f"List[{self._get_base_python_type(field.type)}]"
+                return f"List[{base_type}]"
         else:
-            return self._get_base_python_type(field.type)
+            base_type = self._get_base_python_type(field.type)
+            # Use string annotations for non-builtin types to avoid forward reference issues
+            if not field.is_builtin and field.type not in self.builtin_types:
+                return f"Optional['{base_type}']"
+            return base_type
     
     def _get_base_python_type(self, ros_type: str) -> str:
         """Get the base Python type for a ROS type."""
@@ -247,6 +370,11 @@ class {class_name}:
             'duration': 'Duration'
         }
         
+        # Handle cross-package dependencies
+        if '/' in ros_type:
+            pkg, msg_type = ros_type.split('/', 1)
+            return msg_type  # Just return the message type name
+        
         return type_mappings.get(ros_type, ros_type)
     
     def _get_default_value(self, field: FieldInfo) -> str:
@@ -264,19 +392,16 @@ class {class_name}:
         elif field.type in self.builtin_types:
             return "0"
         else:
-            # For custom types, create an instance
-            if '/' in field.type:
-                # Cross-package dependency
-                pkg, msg_type = field.type.split('/', 1)
-                return f"{msg_type}()"
-            else:
-                return f"{field.type}()"
+            # For custom types, use None and handle in __post_init__
+            return "None"
     
     def generate_package_module(self, messages: List[MessageInfo], package_name: str) -> str:
         """Generate a complete Python module for a package."""
         imports = [
+            f'"""Simplified {package_name} types"""',
+            "",
             "from dataclasses import dataclass, field",
-            "from typing import List, Optional",
+            "from typing import List, Optional, Dict, Any",
             "",
             "# Import dependencies",
         ]
@@ -288,13 +413,13 @@ class {class_name}:
         
         # Add builtin type imports
         if any('time' in dep for dep in dependencies):
-            imports.append("from builtin_interfaces.msg import Time")
+            imports.append("from ...builtin_interfaces.msg.builtin_interfaces import Time")
         if any('duration' in dep for dep in dependencies):
-            imports.append("from builtin_interfaces.msg import Duration")
+            imports.append("from ...builtin_interfaces.msg.builtin_interfaces import Duration")
         
         # Add std_msgs imports
         if any('std_msgs' in dep for dep in dependencies):
-            imports.append("from std_msgs.msg import Header")
+            imports.append("from ...std_msgs.msg.std_msgs import Header")
         
         # Add other package dependencies
         for dep in sorted(dependencies):
@@ -302,9 +427,11 @@ class {class_name}:
                 if '/' in dep:
                     # Handle cross-package dependencies
                     pkg, msg_type = dep.split('/', 1)
-                    imports.append(f"from {pkg}.msg import {msg_type}")
+                    if pkg != package_name:  # Don't import from same package
+                        imports.append(f"from ...{pkg}.msg.{pkg} import {msg_type}")
                 else:
-                    imports.append(f"from .{dep.lower()} import {dep}")
+                    # Don't import from same package
+                    pass
         
         imports.append("")
         
@@ -314,16 +441,20 @@ class {class_name}:
             classes.append(self.generate_message_class(msg))
             classes.append("")  # Empty line between classes
         
+        # Generate __all__ list
+        class_names = [msg.name for msg in messages]
+        all_list = f"__all__ = {class_names}"
+        
         # Combine everything
-        module_content = '\n'.join(imports + classes)
+        module_content = '\n'.join(imports + classes + [all_list])
         
         return module_content
 
 
 def main():
     parser = argparse.ArgumentParser(description='Parse ROS 2 interface packages and generate simplified types')
-    parser.add_argument('--input', '-i', required=True,
-                       help='Input directory containing ROS 2 interface packages')
+    parser.add_argument('--input', '-i',
+                       help='Input directory containing ROS 2 interface packages (optional, will auto-detect if not provided)')
     parser.add_argument('--output', '-o', default='generated_types',
                        help='Output directory for generated Python files')
     parser.add_argument('--package', '-p',
@@ -333,22 +464,29 @@ def main():
     
     args = parser.parse_args()
     
-    if not os.path.exists(args.input):
-        print(f"Error: Input directory '{args.input}' does not exist")
-        sys.exit(1)
+    # Auto-detect ROS 2 message files if no input directory specified
+    if args.input:
+        if not os.path.exists(args.input):
+            print(f"Error: Input directory '{args.input}' does not exist")
+            sys.exit(1)
+        msg_files = []
+        for root, dirs, files in os.walk(args.input):
+            for file in files:
+                if file.endswith('.msg'):
+                    msg_files.append(os.path.join(root, file))
+    else:
+        print("Auto-detecting ROS 2 message files...")
+        msg_files = find_ros2_msg_files()
+        if not msg_files:
+            print("Error: No ROS 2 message files found. Please specify --input directory or ensure ROS 2 is properly installed.")
+            sys.exit(1)
+        print(f"Found {len(msg_files)} message files from auto-detection")
     
     # Create output directory
     os.makedirs(args.output, exist_ok=True)
     
     parser_obj = ROS2InterfaceParser()
     generator = SimplifiedTypeGenerator()
-    
-    # Find all .msg files
-    msg_files = parser_obj.find_msg_files(args.input)
-    
-    if args.package:
-        # Filter by specific package
-        msg_files = [f for f in msg_files if f'/{args.package}/' in f]
     
     if not msg_files:
         print("No .msg files found")
@@ -391,8 +529,23 @@ def main():
             # Generate Python module
             module_content = generator.generate_package_module(messages, package_name)
             
-            # Write to file
-            output_file = os.path.join(args.output, f"{package_name}.py")
+            # Create ROS 2 standard directory structure
+            package_dir = os.path.join(args.output, package_name)
+            msg_dir = os.path.join(package_dir, 'msg')
+            os.makedirs(msg_dir, exist_ok=True)
+            
+            # Write package __init__.py
+            package_init = f'# {package_name} package\n'
+            with open(os.path.join(package_dir, '__init__.py'), 'w') as f:
+                f.write(package_init)
+            
+            # Write msg __init__.py
+            msg_init = f'# {package_name}.msg package\n'
+            with open(os.path.join(msg_dir, '__init__.py'), 'w') as f:
+                f.write(msg_init)
+            
+            # Write the main message file
+            output_file = os.path.join(msg_dir, f"{package_name}.py")
             with open(output_file, 'w') as f:
                 f.write(module_content)
             
