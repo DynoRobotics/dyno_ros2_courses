@@ -2,3 +2,5 @@
 collaborative-individuation-collective
 .pnpm-store
 src/rmw_zenoh
+src/zenoh/Micro-CDR
+src/zenoh/zenoh-pico
