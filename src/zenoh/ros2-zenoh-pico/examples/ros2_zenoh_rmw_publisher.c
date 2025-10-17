@@ -22,14 +22,17 @@
 #include <zenoh-pico/api/macros.h>
 #endif
 
+// ROS2 Vector3 message structure (matches geometry_msgs/Vector3)
+typedef struct {
+    double x;  // float64 in ROS 2
+    double y;  // float64 in ROS 2
+    double z;  // float64 in ROS 2
+} ros2_vector3_t;
+
 // ROS2 Twist message structure (matches geometry_msgs/Twist)
 typedef struct {
-    float linear_x;
-    float linear_y;
-    float linear_z;
-    float angular_x;
-    float angular_y;
-    float angular_z;
+    ros2_vector3_t linear;
+    ros2_vector3_t angular;
 } ros2_twist_t;
 
 // ROS2-compatible message metadata
@@ -45,42 +48,35 @@ typedef struct {
 // CDR serialization for ROS2 Twist message
 int serialize_ros2_twist(const ros2_twist_t* twist, uint8_t* buffer, size_t buffer_size, size_t* serialized_size) {
 #ifdef MICROCDR_AVAILABLE
-    ucdrBuffer writer;
-    // Initialize buffer with little-endian for CDR compatibility
-    ucdr_init_buffer_origin_offset_endian(&writer, buffer, buffer_size, 0, 0, UCDR_LITTLE_ENDIANNESS);
+    // Manually add CDR encapsulation header (4 bytes: 0x00 0x01 0x00 0x00)
+    // This must be done before Micro-CDR to match Fast CDR format
+    buffer[0] = 0x00;  // Encapsulation byte 0
+    buffer[1] = 0x01;  // Encapsulation byte 1 (little-endian)
+    buffer[2] = 0x00;  // Options byte 0
+    buffer[3] = 0x00;  // Options byte 1
     
-    // Serialize linear velocity (Vector3) - no CDR encapsulation header
-    // rmw_zenoh handles encapsulation internally
-    if (!ucdr_serialize_float(&writer, twist->linear_x) ||
-        !ucdr_serialize_float(&writer, twist->linear_y) ||
-        !ucdr_serialize_float(&writer, twist->linear_z)) {
+    ucdrBuffer writer;
+    // Initialize buffer starting after the 4-byte CDR header
+    ucdr_init_buffer_origin_offset_endian(&writer, buffer + 4, buffer_size - 4, 0, 0, UCDR_LITTLE_ENDIANNESS);
+    
+    // Serialize linear velocity (Vector3)
+    if (!ucdr_serialize_double(&writer, twist->linear.x) ||
+        !ucdr_serialize_double(&writer, twist->linear.y) ||
+        !ucdr_serialize_double(&writer, twist->linear.z)) {
         printf("DEBUG: Failed to serialize linear velocity\n");
         return -1;
     }
     
-    // Add alignment padding if needed (CDR requires 4-byte alignment)
-    // Check if we need padding before the next struct
-    size_t current_pos = ucdr_buffer_length(&writer);
-    if (current_pos % 4 != 0) {
-        size_t padding_needed = 4 - (current_pos % 4);
-        for (size_t i = 0; i < padding_needed; i++) {
-            if (!ucdr_serialize_uint8_t(&writer, 0)) {
-                printf("DEBUG: Failed to serialize padding\n");
-                return -1;
-            }
-        }
-    }
-    
     // Serialize angular velocity (Vector3)
-    if (!ucdr_serialize_float(&writer, twist->angular_x) ||
-        !ucdr_serialize_float(&writer, twist->angular_y) ||
-        !ucdr_serialize_float(&writer, twist->angular_z)) {
+    if (!ucdr_serialize_double(&writer, twist->angular.x) ||
+        !ucdr_serialize_double(&writer, twist->angular.y) ||
+        !ucdr_serialize_double(&writer, twist->angular.z)) {
         printf("DEBUG: Failed to serialize angular velocity\n");
         return -1;
     }
     
-    *serialized_size = ucdr_buffer_length(&writer);
-    printf("DEBUG: Serialized %zu bytes (raw CDR data)\n", *serialized_size);
+    *serialized_size = 4 + ucdr_buffer_length(&writer);  // 4-byte header + data
+    printf("DEBUG: Serialized %zu bytes (CDR with encapsulation)\n", *serialized_size);
     
     // Debug: Print first 16 bytes of serialized data
     printf("DEBUG: First 16 bytes: ");
@@ -290,7 +286,7 @@ int main(int argc, char** argv) {
     
     // Configuration
     ros2_zenoh_pico_config_t config = ROS2_ZENOH_PICO_DEFAULT_CONFIG;
-    config.endpoint = "tcp/172.18.0.2:7447";  // Your Zenoh router
+    config.endpoint = "tcp/0.0.0.0:7447";  // Your Zenoh router
     config.verbose = true;
 
     // Create node
@@ -376,19 +372,19 @@ int main(int argc, char** argv) {
     ros2_twist_t twist;
     
     // Publish messages
-    for (int i = 0; i < 3; i++) {  // Reduced to just 3 messages
+    for (int i = 0; i < 25; i++) {
         // Create a simple motion pattern
         float angle = (float)i * 0.3f; // Simple increment
         
         // Linear velocity (forward motion)
-        twist.linear_x = 1.5f;  // Forward speed
-        twist.linear_y = 0.0f;
-        twist.linear_z = 0.0f;
+        twist.linear.x = 1.5;  // Forward speed (double)
+        twist.linear.y = 0.0;
+        twist.linear.z = 0.0;
         
         // Angular velocity (turning)
-        twist.angular_x = 0.0f;
-        twist.angular_y = 0.0f;
-        twist.angular_z = 0.6f * sinf(angle);  // Oscillating turn rate
+        twist.angular.x = 0.0;
+        twist.angular.y = 0.0;
+        twist.angular.z = 0.6 * sin(angle);  // Oscillating turn rate (double)
         
         // Publish ROS2-compatible message
         int result = publish_ros2_twist(node, "/turtle1/safe_cmd_vel", &twist, &metadata);
@@ -401,8 +397,8 @@ int main(int argc, char** argv) {
         
         printf("Published ROS2 Twist[%d] (seq=%lu): linear=(%.2f,%.2f,%.2f) angular=(%.2f,%.2f,%.2f)\n", 
                i, metadata.sequence_number - 1,
-               twist.linear_x, twist.linear_y, twist.linear_z,
-               twist.angular_x, twist.angular_y, twist.angular_z);
+               twist.linear.x, twist.linear.y, twist.linear.z,
+               twist.angular.x, twist.angular.y, twist.angular.z);
         fflush(stdout);
         
         ros2_zenoh_pico_sleep_ms(1000);  // Increased delay to 1 second

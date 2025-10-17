@@ -10,8 +10,8 @@ find_package(ament_cmake REQUIRED)
 find_package(microcdr REQUIRED)
 
 # Find zenoh-pico manually
-find_library(ZENOH_PICO_LIB zenohpico PATHS /home/ubuntu/ws/install/lib)
-find_path(ZENOH_PICO_INCLUDE_DIR zenoh-pico.h PATHS /home/ubuntu/ws/install/include)
+find_library(ZENOH_PICO_LIB zenohpico PATHS /home/ubuntu/install/lib)
+find_path(ZENOH_PICO_INCLUDE_DIR zenoh-pico.h PATHS /home/ubuntu/install/include)
 
 if(NOT ZENOH_PICO_LIB OR NOT ZENOH_PICO_INCLUDE_DIR)
     message(FATAL_ERROR "zenoh-pico library not found")
@@ -92,8 +92,8 @@ foreach(example_src ${EXAMPLE_SOURCES})
     # Special handling for RMW examples
     elseif(${example_name} MATCHES ".*rmw.*")
         target_link_libraries(${example_name} ros2_zenoh_pico microcdr m)
-        target_include_directories(${example_name} PRIVATE include)
-        target_compile_definitions(${example_name} PRIVATE MICROCDR_AVAILABLE)
+        target_include_directories(${example_name} PRIVATE include ${ZENOH_PICO_INCLUDE_DIR})
+        target_compile_definitions(${example_name} PRIVATE MICROCDR_AVAILABLE ZENOH_LINUX ZENOH_COMPILER_GCC)
     else()
         target_link_libraries(${example_name} ros2_zenoh_pico)
         target_include_directories(${example_name} PRIVATE include)

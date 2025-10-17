@@ -5,10 +5,8 @@ Convert between ROS 2 messages and simplified message types.
 """
 
 from typing import Any, Type, Union
-from ros2_interfaces_python.geometry_msgs.msg.geometry_msgs import Vector3, Twist, Pose, Point, Quaternion, PoseStamped
-from . import messages as core_messages
-Time = core_messages.Time
-Log = core_messages.Log
+# Import from the message types module
+from .message_types import Vector3, Twist, Pose, Point, Quaternion, PoseStamped, Time, Log
 
 
 class MessageConverter:
