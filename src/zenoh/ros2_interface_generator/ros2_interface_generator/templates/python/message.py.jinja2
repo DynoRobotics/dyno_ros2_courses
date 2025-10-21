@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, TYPE_CHECKING
 
 {% if encoding_name == 'cdr' %}
@@ -21,10 +21,10 @@ import json
 from .{{ module }} import {{ classname }}
 {% endfor %}
 {% endif %}
-{% if imports_other_pkgs %}
+{% if imports_other_pkg_types %}
 
-# Import package.msg modules
-{% for pkg in imports_other_pkgs %}
+# Import other package modules (not individual classes to avoid circular imports)
+{% for pkg in imports_other_pkg_types.keys() %}
 import ros2_interfaces_py.{{ pkg }}.msg
 {% endfor %}
 {% endif %}
@@ -46,11 +46,11 @@ class {{ message.name }}:
     ROS 2 type hash: {{ message.type_hash }}
 {% endif %}
 {% if needs_dds_type_name %}
-    DDS type name: {{ message.package }}::msg::dds_::{{ message.name }}_
+    DDS type name: {{ dds_type_name }}
 {% endif %}
     """
 {% for field in message.fields %}
-    {{ field.name }}: {{ get_python_type(field) }}
+    {{ field.name }}: {{ get_python_type(field) }} = {{ get_default_value(field) }}
 {% endfor %}
     
 {% if needs_type_hash %}
@@ -59,7 +59,7 @@ class {{ message.name }}:
 {% endif %}
 {% if needs_dds_type_name %}
     # DDS Type Name
-    DDS_TYPE_NAME = "{{ message.package }}::msg::dds_::{{ message.name }}_"
+    DDS_TYPE_NAME = "{{ dds_type_name }}"
 {% endif %}
 
     def to_dict(self) -> dict:
@@ -89,9 +89,17 @@ class {{ message.name }}:
 {% elif field.is_builtin and field.is_array %}
             kwargs['{{ field.name }}'] = data['{{ field.name }}']
 {% elif not field.is_builtin and not field.is_array %}
+            {% if field.ros2_package == message.package %}
             kwargs['{{ field.name }}'] = {{ field.type }}.from_dict(data['{{ field.name }}'])
+            {% else %}
+            kwargs['{{ field.name }}'] = ros2_interfaces_py.{{ field.ros2_package }}.msg.{{ field.type }}.from_dict(data['{{ field.name }}'])
+            {% endif %}
 {% elif not field.is_builtin and field.is_array %}
+            {% if field.ros2_package == message.package %}
             kwargs['{{ field.name }}'] = [{{ field.type }}.from_dict(item) for item in data['{{ field.name }}']]
+            {% else %}
+            kwargs['{{ field.name }}'] = [ros2_interfaces_py.{{ field.ros2_package }}.msg.{{ field.type }}.from_dict(item) for item in data['{{ field.name }}']]
+            {% endif %}
 {% endif %}
 {% endfor %}
         return cls(**kwargs)

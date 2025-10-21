@@ -174,7 +174,7 @@ class TestGeneratedInterfaceHashes:
     async def test_std_msgs_string_hash(self):
         """Test std_msgs/String has correct hash."""
         try:
-            from ros2_interfaces_py.std_msgs.msg.string import String
+            from ros2_zenoh_python._bundled_msgs.std_msgs.msg.string import String
         except ImportError:
             pytest.skip("ros2_interfaces_py not installed")
         
@@ -189,7 +189,7 @@ class TestGeneratedInterfaceHashes:
     async def test_geometry_msgs_twist_hash(self):
         """Test generated Twist has correct hash."""
         try:
-            from ros2_interfaces_py.geometry_msgs.msg.twist import Twist as GeneratedTwist
+            from ros2_zenoh_python._bundled_msgs.geometry_msgs.msg.twist import Twist as GeneratedTwist
         except ImportError:
             pytest.skip("ros2_interfaces_py not installed")
         
@@ -206,7 +206,7 @@ class TestGeneratedInterfaceHashes:
     async def test_builtin_interfaces_time_hash(self):
         """Test builtin_interfaces/Time has correct hash."""
         try:
-            from ros2_interfaces_py.builtin_interfaces.msg.time import Time
+            from ros2_zenoh_python._bundled_msgs.builtin_interfaces.msg.time import Time
         except ImportError:
             pytest.skip("ros2_interfaces_py not installed")
         
@@ -219,7 +219,7 @@ class TestGeneratedInterfaceHashes:
     async def test_sensor_msgs_image_hash(self):
         """Test sensor_msgs/Image has correct hash (complex nested message)."""
         try:
-            from ros2_interfaces_py.sensor_msgs.msg.image import Image
+            from ros2_zenoh_python._bundled_msgs.sensor_msgs.msg.image import Image
         except ImportError:
             pytest.skip("ros2_interfaces_py not installed or essential preset doesn't include sensor_msgs")
         
@@ -233,8 +233,8 @@ class TestGeneratedInterfaceHashes:
     async def test_all_messages_have_dds_type_name(self):
         """Test that all generated messages have DDS_TYPE_NAME."""
         try:
-            from ros2_interfaces_py.std_msgs.msg.string import String
-            from ros2_interfaces_py.geometry_msgs.msg.twist import Twist as GeneratedTwist
+            from ros2_zenoh_python._bundled_msgs.std_msgs.msg.string import String
+            from ros2_zenoh_python._bundled_msgs.geometry_msgs.msg.twist import Twist as GeneratedTwist
         except ImportError:
             pytest.skip("ros2_interfaces_py not installed")
         
@@ -251,8 +251,8 @@ class TestGeneratedInterfaceHashes:
     async def test_serialization_roundtrip(self):
         """Test serialize/deserialize roundtrip for generated messages."""
         try:
-            from ros2_interfaces_py.std_msgs.msg.string import String
-            from ros2_interfaces_py.std_msgs.msg.int32 import Int32
+            from ros2_zenoh_python._bundled_msgs.std_msgs.msg.string import String
+            from ros2_zenoh_python._bundled_msgs.std_msgs.msg.int32 import Int32
         except ImportError:
             pytest.skip("ros2_interfaces_py not installed")
         
@@ -279,7 +279,7 @@ class TestGeneratedInterfaceHashes:
             pytest.skip("rclpy not available")
         
         try:
-            from ros2_interfaces_py.std_msgs.msg.string import String
+            from ros2_zenoh_python._bundled_msgs.std_msgs.msg.string import String
         except ImportError:
             pytest.skip("ros2_interfaces_py not installed")
         

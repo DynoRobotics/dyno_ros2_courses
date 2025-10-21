@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, TYPE_CHECKING
 
 
@@ -14,7 +14,7 @@ except ImportError:
 
 
 
-# Import package.msg modules
+# Import other package modules (not individual classes to avoid circular imports)
 
 import ros2_interfaces_py.builtin_interfaces.msg
 
@@ -38,19 +38,19 @@ class Log(IdlStruct, typename="rcl_interfaces/Log"):
 
     """
 
-    stamp: 'ros2_interfaces_py.builtin_interfaces.msg.Time'
+    stamp: 'ros2_interfaces_py.builtin_interfaces.msg.Time' = field(default_factory=lambda: ros2_interfaces_py.builtin_interfaces.msg.Time())
 
-    level: uint8
+    level: uint8 = 0
 
-    name: str
+    name: str = ""
 
-    msg: str
+    msg: str = ""
 
-    file: str
+    file: str = ""
 
-    function: str
+    function: str = ""
 
-    line: uint32
+    line: uint32 = 0
 
     
 
@@ -103,7 +103,9 @@ class Log(IdlStruct, typename="rcl_interfaces/Log"):
 
         if 'stamp' in data:
 
-            kwargs['stamp'] = Time.from_dict(data['stamp'])
+            
+            kwargs['stamp'] = ros2_interfaces_py.builtin_interfaces.msg.Time.from_dict(data['stamp'])
+            
 
 
         if 'level' in data:

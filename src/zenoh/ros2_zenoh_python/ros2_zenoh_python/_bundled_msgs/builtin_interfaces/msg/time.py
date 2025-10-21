@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, TYPE_CHECKING
 
 
@@ -32,9 +32,9 @@ class Time(IdlStruct, typename="builtin_interfaces/Time"):
 
     """
 
-    sec: int32
+    sec: int32 = 0
 
-    nanosec: uint32
+    nanosec: uint32 = 0
 
     
 

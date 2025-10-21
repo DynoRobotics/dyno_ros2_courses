@@ -45,7 +45,6 @@ setup(
     install_requires=[
         "eclipse-zenoh>=1.5.0",
         "pycdr2>=0.1.0",
-        "ros2-interfaces-python>=0.1.0",
     ],
     extras_require={
         "dev": [

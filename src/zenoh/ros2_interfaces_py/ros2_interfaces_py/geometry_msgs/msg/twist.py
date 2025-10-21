@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, TYPE_CHECKING
 
 
@@ -38,9 +38,9 @@ class Twist(IdlStruct, typename="geometry_msgs/Twist"):
 
     """
 
-    linear: Vector3
+    linear: Vector3 = field(default_factory=Vector3)
 
-    angular: Vector3
+    angular: Vector3 = field(default_factory=Vector3)
 
     
 
@@ -73,12 +73,16 @@ class Twist(IdlStruct, typename="geometry_msgs/Twist"):
 
         if 'linear' in data:
 
+            
             kwargs['linear'] = Vector3.from_dict(data['linear'])
+            
 
 
         if 'angular' in data:
 
+            
             kwargs['angular'] = Vector3.from_dict(data['angular'])
+            
 
 
         return cls(**kwargs)

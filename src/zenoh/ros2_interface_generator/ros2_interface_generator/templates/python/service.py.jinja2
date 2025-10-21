@@ -1,0 +1,34 @@
+"""
+{{ service.name }} service type.
+
+Auto-generated from {{ service.package }}/srv/{{ service.name }}.srv
+"""
+
+{% set request_msg = service.request %}
+{% set response_msg = service.response %}
+
+{# Generate Request class using message template #}
+{% set message=request_msg %}
+{% set dds_type_name=request_dds_type_name %}
+{% include "message.py.jinja2" %}
+
+{# Generate Response class using message template #}
+{% set message=response_msg %}
+{% set dds_type_name=response_dds_type_name %}
+{% include "message.py.jinja2" %}
+
+
+class {{ service.name }}:
+    """
+    Service type for {{ service.package }}/{{ service.name }}.
+    
+    Request: {{ service.request.name }}
+    Response: {{ service.response.name }}
+    """
+    Request = {{ service.request.name }}
+    Response = {{ service.response.name }}
+    
+    # ROS2 Service Type Hash (RIHS01)
+    TYPE_HASH = "{{ service_type_hash }}"
+
+

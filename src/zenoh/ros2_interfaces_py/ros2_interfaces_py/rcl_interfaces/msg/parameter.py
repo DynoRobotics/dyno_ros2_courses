@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, TYPE_CHECKING
 
 
@@ -38,9 +38,9 @@ class Parameter(IdlStruct, typename="rcl_interfaces/Parameter"):
 
     """
 
-    name: str
+    name: str = ""
 
-    value: ParameterValue
+    value: ParameterValue = field(default_factory=ParameterValue)
 
     
 
@@ -78,7 +78,9 @@ class Parameter(IdlStruct, typename="rcl_interfaces/Parameter"):
 
         if 'value' in data:
 
+            
             kwargs['value'] = ParameterValue.from_dict(data['value'])
+            
 
 
         return cls(**kwargs)

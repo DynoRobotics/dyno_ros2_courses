@@ -142,7 +142,7 @@ class TestGeneratedInterfaces:
     async def test_std_msgs_string(self, zenoh_session):
         """Test std_msgs/String from generated package."""
         try:
-            from ros2_interfaces_py.std_msgs.msg.string import String
+            from ros2_zenoh_python._bundled_msgs.std_msgs.msg.string import String
         except ImportError:
             pytest.skip("ros2_interfaces_py not installed")
         
@@ -169,7 +169,7 @@ class TestGeneratedInterfaces:
     async def test_std_msgs_int32(self, zenoh_session):
         """Test std_msgs/Int32 from generated package."""
         try:
-            from ros2_interfaces_py.std_msgs.msg.int32 import Int32
+            from ros2_zenoh_python._bundled_msgs.std_msgs.msg.int32 import Int32
         except ImportError:
             pytest.skip("ros2_interfaces_py not installed")
         
@@ -196,9 +196,9 @@ class TestGeneratedInterfaces:
     async def test_geometry_msgs_pose(self, zenoh_session):
         """Test geometry_msgs/Pose with nested messages."""
         try:
-            from ros2_interfaces_py.geometry_msgs.msg.pose import Pose
-            from ros2_interfaces_py.geometry_msgs.msg.point import Point
-            from ros2_interfaces_py.geometry_msgs.msg.quaternion import Quaternion
+            from ros2_zenoh_python._bundled_msgs.geometry_msgs.msg.pose import Pose
+            from ros2_zenoh_python._bundled_msgs.geometry_msgs.msg.point import Point
+            from ros2_zenoh_python._bundled_msgs.geometry_msgs.msg.quaternion import Quaternion
         except ImportError:
             pytest.skip("ros2_interfaces_py not installed")
         
@@ -232,7 +232,7 @@ class TestGeneratedInterfaces:
     async def test_generated_twist_matches_bundled(self, zenoh_session):
         """Test that generated Twist has same hash as bundled Twist."""
         try:
-            from ros2_interfaces_py.geometry_msgs.msg.twist import Twist as GeneratedTwist
+            from ros2_zenoh_python._bundled_msgs.geometry_msgs.msg.twist import Twist as GeneratedTwist
         except ImportError:
             pytest.skip("ros2_interfaces_py not installed")
         

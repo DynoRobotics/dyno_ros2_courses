@@ -45,38 +45,186 @@ class RIHS01Hasher:
         Initialize hasher with all parsed messages.
         
         Args:
-            all_messages: Dictionary mapping 'package/msg/Name' to MessageInfo objects
+            all_messages: Dictionary mapping package -> {name -> MessageInfo}
         """
+        # Convert nested dict to flat dict keyed by full type name
         self.all_messages = all_messages
+        self.type_lookup = {}
+        for package, messages in all_messages.items():
+            for name, msg_info in messages.items():
+                # Determine namespace from is_service_type flag
+                namespace = 'srv' if msg_info.is_service_type else 'msg'
+                full_type_name = f"{package}/{namespace}/{name}"
+                self.type_lookup[full_type_name] = msg_info
         self.type_cache = {}
     
-    def calculate_hash(self, package: str, name: str) -> str:
+    def calculate_hash(self, package: str, name: str, namespace: str = 'msg') -> str:
         """
         Calculate RIHS01 hash for a message type.
         
         Args:
             package: Package name (e.g., 'geometry_msgs')
             name: Message name (e.g., 'Twist')
+            namespace: Type namespace ('msg' or 'srv'), default 'msg'
             
         Returns:
             RIHS01 hash string (e.g., 'RIHS01_9c45bf16...')
         """
-        type_name = f"{package}/msg/{name}"
+        type_name = f"{package}/{namespace}/{name}"
         
         # Build full type description with references
-        full_description = self._build_full_type_description(package, name)
+        full_description = self._build_full_type_description(package, name, namespace)
         
         # Calculate hash
         return self._calculate_type_hash(full_description)
     
-    def _build_full_type_description(self, package: str, name: str) -> Dict:
-        """Build complete type description including all referenced types."""
-        type_name = f"{package}/msg/{name}"
+    def calculate_service_hash(self, package: str, name: str, request_msg, response_msg) -> str:
+        """
+        Calculate RIHS01 hash for a service type.
         
-        if package not in self.all_messages or name not in self.all_messages[package]:
+        Services have their own type description that references Request, Response, and Event types.
+        Per ROS2 standard, services have 3 members: request_message, response_message, event_message
+        
+        Args:
+            package: Package name (e.g., 'example_interfaces')
+            name: Service name (e.g., 'AddTwoInts')
+            request_msg: MessageInfo for the Request
+            response_msg: MessageInfo for the Response
+            
+        Returns:
+            RIHS01 hash string for the service
+        """
+        # Build service type description
+        # Services reference Request, Response, and Event message types
+        service_type = {
+            'type_name': f"{package}/srv/{name}",
+            'fields': [
+                {
+                    'name': 'request_message',
+                    'type': {
+                        'type_id': 1,  # Nested type
+                        'capacity': 0,
+                        'string_capacity': 0,
+                        'nested_type_name': f"{package}/srv/{name}_Request"
+                    },
+                    'default_value': ''
+                },
+                {
+                    'name': 'response_message',
+                    'type': {
+                        'type_id': 1,  # Nested type
+                        'capacity': 0,
+                        'string_capacity': 0,
+                        'nested_type_name': f"{package}/srv/{name}_Response"
+                    },
+                    'default_value': ''
+                },
+                {
+                    'name': 'event_message',
+                    'type': {
+                        'type_id': 1,  # Nested type
+                        'capacity': 0,
+                        'string_capacity': 0,
+                        'nested_type_name': f"{package}/srv/{name}_Event"
+                    },
+                    'default_value': ''
+                }
+            ]
+        }
+        
+        # Collect referenced types (Request, Response, Event, and their dependencies)
+        referenced_types = {}
+        
+        # Add Request type
+        request_type_name = f"{package}/srv/{name}_Request"
+        referenced_types[request_type_name] = self._serialize_type(request_msg, request_type_name)
+        self._collect_references(request_msg, referenced_types)
+        
+        # Add Response type  
+        response_type_name = f"{package}/srv/{name}_Response"
+        referenced_types[response_type_name] = self._serialize_type(response_msg, response_type_name)
+        self._collect_references(response_msg, referenced_types)
+        
+        # Add Event type (auto-generated for all services)
+        # Event has 3 fields: info (ServiceEventInfo), request (bounded sequence[1]), response (bounded sequence[1])
+        event_type_name = f"{package}/srv/{name}_Event"
+        referenced_types[event_type_name] = {
+            'type_name': event_type_name,
+            'fields': [
+                {
+                    'name': 'info',
+                    'type': {
+                        'type_id': 1,  # Nested type
+                        'capacity': 0,
+                        'string_capacity': 0,
+                        'nested_type_name': 'service_msgs/msg/ServiceEventInfo'
+                    },
+                    'default_value': ''
+                },
+                {
+                    'name': 'request',
+                    'type': {
+                        'type_id': 97,  # FIELD_TYPE_NESTED_TYPE_BOUNDED_SEQUENCE
+                        'capacity': 1,
+                        'string_capacity': 0,
+                        'nested_type_name': request_type_name
+                    },
+                    'default_value': ''
+                },
+                {
+                    'name': 'response',
+                    'type': {
+                        'type_id': 97,  # FIELD_TYPE_NESTED_TYPE_BOUNDED_SEQUENCE
+                        'capacity': 1,
+                        'string_capacity': 0,
+                        'nested_type_name': response_type_name
+                    },
+                    'default_value': ''
+                }
+            ]
+        }
+        
+        # Add ServiceEventInfo (standard ROS2 message from service_msgs package)
+        # We need to add this as well since Event references it
+        # ServiceEventInfo has fixed fields per ROS2 standard
+        referenced_types['service_msgs/msg/ServiceEventInfo'] = {
+            'type_name': 'service_msgs/msg/ServiceEventInfo',
+            'fields': [
+                {'name': 'event_type', 'type': {'type_id': 3, 'capacity': 0, 'string_capacity': 0, 'nested_type_name': ''}, 'default_value': ''},  # uint8
+                {'name': 'stamp', 'type': {'type_id': 1, 'capacity': 0, 'string_capacity': 0, 'nested_type_name': 'builtin_interfaces/msg/Time'}, 'default_value': ''},
+                {'name': 'client_gid', 'type': {'type_id': 51, 'capacity': 16, 'string_capacity': 0, 'nested_type_name': ''}, 'default_value': ''},  # uint8[16]
+                {'name': 'sequence_number', 'type': {'type_id': 8, 'capacity': 0, 'string_capacity': 0, 'nested_type_name': ''}, 'default_value': ''},  # int64
+            ]
+        }
+        
+        # Add builtin_interfaces/msg/Time if not already present
+        if 'builtin_interfaces/msg/Time' not in referenced_types:
+            referenced_types['builtin_interfaces/msg/Time'] = {
+                'type_name': 'builtin_interfaces/msg/Time',
+                'fields': [
+                    {'name': 'sec', 'type': {'type_id': 6, 'capacity': 0, 'string_capacity': 0, 'nested_type_name': ''}, 'default_value': ''},  # int32
+                    {'name': 'nanosec', 'type': {'type_id': 7, 'capacity': 0, 'string_capacity': 0, 'nested_type_name': ''}, 'default_value': ''},  # uint32
+                ]
+            }
+        
+        # Sort referenced types alphabetically by type_name (as ROS2 does)
+        sorted_refs = sorted(referenced_types.values(), key=lambda x: x['type_name'])
+        
+        full_description = {
+            'type_description': service_type,
+            'referenced_type_descriptions': sorted_refs
+        }
+        
+        return self._calculate_type_hash(full_description)
+    
+    def _build_full_type_description(self, package: str, name: str, namespace: str = 'msg') -> Dict:
+        """Build complete type description including all referenced types."""
+        type_name = f"{package}/{namespace}/{name}"
+        
+        if type_name not in self.type_lookup:
             raise ValueError(f"Message {type_name} not found in parsed messages")
         
-        msg_info = self.all_messages[package][name]
+        msg_info = self.type_lookup[type_name]
         
         # Serialize the main type
         main_type = self._serialize_type(msg_info, type_name)

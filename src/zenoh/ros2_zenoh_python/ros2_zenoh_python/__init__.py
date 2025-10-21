@@ -35,6 +35,8 @@ Example usage:
 
 from .publisher import Publisher
 from .subscription import Subscription
+from .service import Service
+from .client import Client
 from .node import Node
 from .liveliness_manager import LivelinessManager
 from .logger import setup_logging, RosoutHandler
@@ -44,7 +46,9 @@ __version__ = "0.1.0"
 __all__ = [
     "Node",
     "Publisher", 
-    "Subscription", 
+    "Subscription",
+    "Service",
+    "Client",
     "LivelinessManager",
     "setup_logging",
     "RosoutHandler",

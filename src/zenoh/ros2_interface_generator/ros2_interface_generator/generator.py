@@ -31,6 +31,17 @@ class MessageInfo:
     fields: List[FieldInfo] = field(default_factory=list)
     dependencies: Set[str] = field(default_factory=set)
     type_hash: str = ""
+    is_service_type: bool = False  # True for service Request/Response
+
+
+@dataclass
+class ServiceInfo:
+    """Information about a ROS 2 service."""
+    name: str
+    package: str
+    request: MessageInfo
+    response: MessageInfo
+    type_hash: str = ""  # Service-level type hash (computed from Request+Response)
 
 
 class Generator:
@@ -57,6 +68,8 @@ class Generator:
         """
         self.language = language.lower()
         self.encoding = encoding.lower()
+        self.messages_by_package = {}
+        self.services_by_package = {}
         
         # Import appropriate backend
         if self.language == 'python':
@@ -82,13 +95,13 @@ class Generator:
         # Discover ROS2 packages and messages
         if packages:
             print(f"   Packages: {len(packages)} specified")
-            messages = self._discover_specific_packages(packages)
+            self.messages_by_package = self._discover_specific_packages(packages)
         else:
             print(f"   Packages: auto-discovering...")
-            messages = self._discover_messages(input_path)
+            self.messages_by_package = self._discover_messages(input_path)
         
         # Generate code using language backend
-        self.lang_backend.generate(messages, Path(output_path))
+        self.lang_backend.generate(self.messages_by_package, self.services_by_package, Path(output_path))
         
         print(f"✅ Generation complete!")
     
@@ -117,42 +130,77 @@ class Generator:
             os.path.expanduser('~/ws/install'),
         ]
         
-        # Find .msg files for specified packages
+        # Find .msg and .srv files for specified packages
         msg_files_by_package = {pkg: [] for pkg in package_names}
+        srv_files_by_package = {pkg: [] for pkg in package_names}
         
         for search_path in search_paths:
             if not os.path.exists(search_path):
                 continue
                 
             for root, dirs, files in os.walk(search_path):
-                # Check if this is a msg directory
-                if os.path.basename(root) == 'msg':
-                    # Get package name from path (parent directory)
-                    pkg_name = os.path.basename(os.path.dirname(root))
-                    
-                    if pkg_name in package_names:
+                dir_name = os.path.basename(root)
+                # Get package name from path (parent directory)
+                pkg_name = os.path.basename(os.path.dirname(root))
+                
+                if pkg_name in package_names:
+                    # Check if this is a msg directory
+                    if dir_name == 'msg':
                         for file in files:
                             if file.endswith('.msg'):
                                 msg_files_by_package[pkg_name].append(os.path.join(root, file))
+                    # Check if this is a srv directory
+                    elif dir_name == 'srv':
+                        for file in files:
+                            if file.endswith('.srv'):
+                                srv_files_by_package[pkg_name].append(os.path.join(root, file))
         
         # Parse the found .msg files
         for pkg_name, msg_files in msg_files_by_package.items():
             if not msg_files:
-                print(f"  ⚠️  No .msg files found for {pkg_name}")
                 continue
             
-            messages_by_package[pkg_name] = {}
+            if pkg_name not in messages_by_package:
+                messages_by_package[pkg_name] = {}
             
             for msg_file in msg_files:
                 try:
                     msg_info = self._parse_msg_file(msg_file, pkg_name)
                     if msg_info:
                         messages_by_package[pkg_name][msg_info.name] = msg_info
-                        print(f"  ✓ {pkg_name}/{msg_info.name}")
+                        print(f"  ✓ {pkg_name}/msg/{msg_info.name}")
                 except Exception as e:
                     print(f"  ⚠️  Error parsing {msg_file}: {e}")
         
-        print(f"📦 Discovered {len(messages_by_package)} packages with {sum(len(msgs) for msgs in messages_by_package.values())} messages")
+        # Parse the found .srv files
+        for pkg_name, srv_files in srv_files_by_package.items():
+            if not srv_files:
+                continue
+            
+            if pkg_name not in self.services_by_package:
+                self.services_by_package[pkg_name] = {}
+            if pkg_name not in messages_by_package:
+                messages_by_package[pkg_name] = {}
+            
+            for srv_file in srv_files:
+                try:
+                    srv_info = self._parse_srv_file(srv_file, pkg_name)
+                    if srv_info:
+                        self.services_by_package[pkg_name][srv_info.name] = srv_info
+                        # Mark Request/Response as service types and add for hash computation
+                        srv_info.request.is_service_type = True
+                        srv_info.response.is_service_type = True
+                        messages_by_package[pkg_name][srv_info.request.name] = srv_info.request
+                        messages_by_package[pkg_name][srv_info.response.name] = srv_info.response
+                        print(f"  ✓ {pkg_name}/srv/{srv_info.name}")
+                except Exception as e:
+                    print(f"  ⚠️  Error parsing {srv_file}: {e}")
+        
+        msg_count = sum(len(msgs) for msgs in messages_by_package.values())
+        srv_count = sum(len(srvs) for srvs in self.services_by_package.values())
+        print(f"📦 Discovered {len(messages_by_package)} packages with {msg_count} messages")
+        if srv_count > 0:
+            print(f"🔧 Discovered {srv_count} services")
         
         # Compute type hashes in parallel (much faster!)
         if messages_by_package:
@@ -162,15 +210,16 @@ class Generator:
         return messages_by_package
     
     def _compute_hashes_parallel(self, messages_by_package: Dict[str, Dict[str, MessageInfo]]):
-        """Compute type hashes for all messages using RIHS01 algorithm."""
+        """Compute type hashes for all messages and services using RIHS01 algorithm."""
         from .rihs01_hasher import RIHS01Hasher
         
         # Use our RIHS01 implementation to calculate correct hashes
         hasher = RIHS01Hasher(messages_by_package)
         
+        # Compute message hashes (skip service types, they'll be handled separately)
         for pkg_name, messages in messages_by_package.items():
             for msg_name, msg_info in messages.items():
-                if msg_info.type_hash is None:
+                if msg_info.type_hash is None and not msg_info.is_service_type:
                     try:
                         msg_info.type_hash = hasher.calculate_hash(pkg_name, msg_name)
                     except Exception as e:
@@ -180,6 +229,27 @@ class Generator:
                         hash_input = f"{pkg_name}::{msg_name}"
                         hash_hex = hashlib.sha256(hash_input.encode()).hexdigest()
                         msg_info.type_hash = f"RIHS01_{hash_hex}"
+        
+        # Compute service hashes
+        for pkg_name, services in self.services_by_package.items():
+            for srv_name, srv_info in services.items():
+                if srv_info.type_hash is None:
+                    try:
+                        # Compute service-level hash
+                        srv_info.type_hash = hasher.calculate_service_hash(
+                            pkg_name, srv_name, srv_info.request, srv_info.response
+                        )
+                        # Also compute Request/Response hashes if not done (use 'srv' namespace)
+                        if srv_info.request.type_hash is None:
+                            srv_info.request.type_hash = hasher.calculate_hash(pkg_name, f"{srv_name}_Request", namespace='srv')
+                        if srv_info.response.type_hash is None:
+                            srv_info.response.type_hash = hasher.calculate_hash(pkg_name, f"{srv_name}_Response", namespace='srv')
+                    except Exception as e:
+                        print(f"  ⚠️  Error computing hash for {pkg_name}/{srv_name}: {e}")
+                        import hashlib
+                        hash_input = f"{pkg_name}::srv::{srv_name}"
+                        hash_hex = hashlib.sha256(hash_input.encode()).hexdigest()
+                        srv_info.type_hash = f"RIHS01_{hash_hex}"
     
     def _discover_messages(self, input_path: str) -> Dict[str, Dict[str, MessageInfo]]:
         """
@@ -229,7 +299,10 @@ class Generator:
             except Exception:
                 continue  # Skip packages that don't have interfaces
         
+        srv_count = sum(len(srvs) for srvs in self.services_by_package.values())
         print(f"📦 Discovered {len(messages_by_package)} packages with messages")
+        if srv_count > 0:
+            print(f"🔧 Discovered {srv_count} services across {len(self.services_by_package)} packages")
         
         return messages_by_package
     
@@ -265,6 +338,65 @@ class Generator:
         msg_info.type_hash = None
         
         return msg_info
+    
+    def _parse_srv_file(self, file_path: str, package: str) -> Optional[ServiceInfo]:
+        """Parse a .srv file directly from the filesystem."""
+        with open(file_path, 'r') as f:
+            content = f.read()
+        
+        # Service files are in PascalCase (e.g., AddTwoInts.srv)
+        srv_name = Path(file_path).stem
+        
+        # Split into request and response sections
+        if '---' not in content:
+            print(f"⚠️  Warning: No '---' separator found in {file_path}, skipping")
+            return None
+        
+        request_content, response_content = content.split('---', 1)
+        
+        # Parse request as a message (mark as service type)
+        request_msg = MessageInfo(name=f"{srv_name}_Request", package=package, is_service_type=True)
+        for line in request_content.split('\n'):
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if '=' in line:  # Constants
+                continue
+            
+            field = self._parse_field_line(line, package)
+            if field:
+                request_msg.fields.append(field)
+                if not field.is_builtin:
+                    request_msg.dependencies.add(f"{field.ros2_package}.{field.type}")
+        
+        # Parse response as a message (mark as service type)
+        response_msg = MessageInfo(name=f"{srv_name}_Response", package=package, is_service_type=True)
+        for line in response_content.split('\n'):
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if '=' in line:  # Constants
+                continue
+            
+            field = self._parse_field_line(line, package)
+            if field:
+                response_msg.fields.append(field)
+                if not field.is_builtin:
+                    response_msg.dependencies.add(f"{field.ros2_package}.{field.type}")
+        
+        srv_info = ServiceInfo(
+            name=srv_name,
+            package=package,
+            request=request_msg,
+            response=response_msg
+        )
+        
+        # Type hash will be computed later in parallel
+        srv_info.type_hash = None
+        request_msg.type_hash = None
+        response_msg.type_hash = None
+        
+        return srv_info
     
     def _parse_message_from_cli(self, package: str, name: str) -> Optional[MessageInfo]:
         """Parse message definition using ros2 CLI."""

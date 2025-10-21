@@ -149,6 +149,68 @@ class LivelinessManager:
         self.tokens[keyexpr] = token
         return token
     
+    def declare_service_server(self, service_name: str, message_type: str, 
+                               type_hash: str, qos: Optional[dict] = None,
+                               node_name: str = "zenoh_service") -> zenoh.LivelinessToken:
+        """
+        Declare a liveliness token for a service server.
+        
+        Args:
+            service_name: ROS 2 service name
+            message_type: ROS 2 service type
+            type_hash: Service type hash
+            qos: QoS settings dict
+            node_name: ROS 2 node name
+            
+        Returns:
+            Liveliness token instance
+        """
+        keyexpr = self.create_liveliness_keyexpr(
+            entity_type="SS",  # Service Server
+            topic_name=service_name,
+            message_type=message_type,
+            type_hash=type_hash,
+            node_name=node_name,
+            node_namespace=""
+        )
+        
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"📡 Service Server Liveliness: {keyexpr}")
+        
+        token = self.session.liveliness().declare_token(zenoh.KeyExpr(keyexpr))
+        self.tokens[keyexpr] = token
+        return token
+    
+    def declare_service_client(self, service_name: str, message_type: str, 
+                               type_hash: str, qos: Optional[dict] = None,
+                               node_name: str = "zenoh_client") -> zenoh.LivelinessToken:
+        """
+        Declare a liveliness token for a service client.
+        
+        Args:
+            service_name: ROS 2 service name
+            message_type: ROS 2 service type
+            type_hash: Service type hash
+            qos: QoS settings dict
+            node_name: ROS 2 node name
+            
+        Returns:
+            Liveliness token instance
+        """
+        keyexpr = self.create_liveliness_keyexpr(
+            entity_type="SC",  # Service Client
+            topic_name=service_name,
+            message_type=message_type,
+            type_hash=type_hash,
+            node_name=node_name,
+            node_namespace=""
+        )
+        
+        token = self.session.liveliness().declare_token(zenoh.KeyExpr(keyexpr))
+        self.tokens[keyexpr] = token
+        return token
+    
     def undeclare_token(self, keyexpr: str):
         """Undeclare a liveliness token."""
         if keyexpr in self.tokens:

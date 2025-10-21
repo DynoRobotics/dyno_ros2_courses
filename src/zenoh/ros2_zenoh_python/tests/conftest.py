@@ -17,6 +17,16 @@ def event_loop():
     """Create an event loop for async tests."""
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
+    
+    # Cancel any remaining tasks
+    pending = asyncio.all_tasks(loop)
+    for task in pending:
+        task.cancel()
+    
+    # Give tasks a chance to clean up
+    if pending:
+        loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+    
     loop.close()
 
 

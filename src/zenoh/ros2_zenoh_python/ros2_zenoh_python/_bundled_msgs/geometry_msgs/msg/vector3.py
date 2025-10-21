@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, TYPE_CHECKING
 
 
@@ -32,11 +32,11 @@ class Vector3(IdlStruct, typename="geometry_msgs/Vector3"):
 
     """
 
-    x: float64
+    x: float64 = 0.0
 
-    y: float64
+    y: float64 = 0.0
 
-    z: float64
+    z: float64 = 0.0
 
     
 

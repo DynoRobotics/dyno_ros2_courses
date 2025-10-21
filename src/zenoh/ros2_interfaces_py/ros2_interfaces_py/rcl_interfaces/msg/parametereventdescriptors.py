@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, TYPE_CHECKING
 
 
@@ -38,11 +38,11 @@ class ParameterEventDescriptors(IdlStruct, typename="rcl_interfaces/ParameterEve
 
     """
 
-    new_parameters: List[ParameterDescriptor]
+    new_parameters: List[ParameterDescriptor] = field(default_factory=list)
 
-    changed_parameters: List[ParameterDescriptor]
+    changed_parameters: List[ParameterDescriptor] = field(default_factory=list)
 
-    deleted_parameters: List[ParameterDescriptor]
+    deleted_parameters: List[ParameterDescriptor] = field(default_factory=list)
 
     
 
@@ -79,17 +79,23 @@ class ParameterEventDescriptors(IdlStruct, typename="rcl_interfaces/ParameterEve
 
         if 'new_parameters' in data:
 
+            
             kwargs['new_parameters'] = [ParameterDescriptor.from_dict(item) for item in data['new_parameters']]
+            
 
 
         if 'changed_parameters' in data:
 
+            
             kwargs['changed_parameters'] = [ParameterDescriptor.from_dict(item) for item in data['changed_parameters']]
+            
 
 
         if 'deleted_parameters' in data:
 
+            
             kwargs['deleted_parameters'] = [ParameterDescriptor.from_dict(item) for item in data['deleted_parameters']]
+            
 
 
         return cls(**kwargs)

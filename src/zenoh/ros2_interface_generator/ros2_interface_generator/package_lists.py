@@ -8,8 +8,9 @@ Provides predefined sets of ROS2 packages to generate.
 ESSENTIAL_PACKAGES = [
     'builtin_interfaces',
     'std_msgs',
+    'std_srvs',  # Standard service definitions (Empty, SetBool, Trigger)
     'geometry_msgs',
-    'rcl_interfaces',
+    'rcl_interfaces',  # Includes parameter services, logging, etc.
 ]
 
 # Common packages for robotics applications
@@ -40,7 +41,7 @@ STANDARD_PACKAGES = COMMON_PACKAGES + [
 
 # All available packages (very comprehensive)
 ALL_PACKAGES = STANDARD_PACKAGES + [
-    'example_interfaces',
+    'example_interfaces',  # Includes example services like AddTwoInts
     'gps_msgs',
     'pcl_msgs',
     'pendulum_msgs',
@@ -48,7 +49,7 @@ ALL_PACKAGES = STANDARD_PACKAGES + [
     'ros_gz_interfaces',
     'rosbag2_interfaces',
     'theora_image_transport',
-    'turtlesim',
+    'turtlesim',  # Includes spawn, teleport services
     'vision_msgs',
     'py_trees_ros_interfaces',
 ]

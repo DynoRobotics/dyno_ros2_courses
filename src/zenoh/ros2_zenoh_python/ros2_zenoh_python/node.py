@@ -17,6 +17,8 @@ from .name_utils import normalize_namespace
 if TYPE_CHECKING:
     from .publisher import Publisher
     from .subscription import Subscription
+    from .service import Service
+    from .client import Client
 
 logger = logging.getLogger(__name__)
 
@@ -61,9 +63,11 @@ class Node:
         # Initialize liveliness manager
         self.liveliness_manager = LivelinessManager(self.session)
         
-        # Track publishers and subscriptions
+        # Track publishers, subscriptions, services, and clients
         self.publishers: Dict[str, Any] = {}
         self.subscriptions: Dict[str, Any] = {}
+        self.services: Dict[str, Any] = {}
+        self.clients: Dict[str, Any] = {}
         
         # Shutdown event for async lifecycle
         self._shutdown_event: Optional[asyncio.Event] = None
@@ -132,6 +136,23 @@ class Node:
             subscription.destroy()
             del self.subscriptions[subscription.topic]
     
+    def create_service(self, srv_type: Type, service_name: str, callback: Callable,
+                      qos_profile: Optional[dict] = None) -> Service:
+        """Create a service server."""
+        from .service import Service
+        srv = Service(srv_type, service_name, callback, node=self, qos_profile=qos_profile)
+        self.services[service_name] = srv
+        logger.debug(f"Created service server for '{service_name}'")
+        return srv
+    
+    def create_client(self, srv_type: Type, service_name: str,
+                     qos_profile: Optional[dict] = None) -> Client:
+        """Create a service client."""
+        from .client import Client
+        client = Client(srv_type, service_name, node=self, qos_profile=qos_profile)
+        self.clients[service_name] = client
+        logger.debug(f"Created service client for '{service_name}'")
+        return client
     
     def destroy_node(self):
         """Destroy the node and clean up all resources."""
@@ -199,6 +220,16 @@ class Node:
         for sub in list(self.subscriptions.values()):
             await sub.adestroy()
         self.subscriptions.clear()
+        
+        # Close all services
+        for srv in list(self.services.values()):
+            await srv.adestroy()
+        self.services.clear()
+        
+        # Close all clients
+        for client in list(self.clients.values()):
+            await client.adestroy()
+        self.clients.clear()
         
         # Only close Zenoh session if we own it
         if hasattr(self, 'session') and self._owns_session:

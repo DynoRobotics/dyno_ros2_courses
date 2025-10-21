@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, TYPE_CHECKING
 
 
@@ -20,7 +20,7 @@ from .parameter import Parameter
 
 
 
-# Import package.msg modules
+# Import other package modules (not individual classes to avoid circular imports)
 
 import ros2_interfaces_py.builtin_interfaces.msg
 
@@ -44,15 +44,15 @@ class ParameterEvent(IdlStruct, typename="rcl_interfaces/ParameterEvent"):
 
     """
 
-    stamp: 'ros2_interfaces_py.builtin_interfaces.msg.Time'
+    stamp: 'ros2_interfaces_py.builtin_interfaces.msg.Time' = field(default_factory=lambda: ros2_interfaces_py.builtin_interfaces.msg.Time())
 
-    node: str
+    node: str = ""
 
-    new_parameters: List[Parameter]
+    new_parameters: List[Parameter] = field(default_factory=list)
 
-    changed_parameters: List[Parameter]
+    changed_parameters: List[Parameter] = field(default_factory=list)
 
-    deleted_parameters: List[Parameter]
+    deleted_parameters: List[Parameter] = field(default_factory=list)
 
     
 
@@ -97,7 +97,9 @@ class ParameterEvent(IdlStruct, typename="rcl_interfaces/ParameterEvent"):
 
         if 'stamp' in data:
 
-            kwargs['stamp'] = Time.from_dict(data['stamp'])
+            
+            kwargs['stamp'] = ros2_interfaces_py.builtin_interfaces.msg.Time.from_dict(data['stamp'])
+            
 
 
         if 'node' in data:
@@ -107,17 +109,23 @@ class ParameterEvent(IdlStruct, typename="rcl_interfaces/ParameterEvent"):
 
         if 'new_parameters' in data:
 
+            
             kwargs['new_parameters'] = [Parameter.from_dict(item) for item in data['new_parameters']]
+            
 
 
         if 'changed_parameters' in data:
 
+            
             kwargs['changed_parameters'] = [Parameter.from_dict(item) for item in data['changed_parameters']]
+            
 
 
         if 'deleted_parameters' in data:
 
+            
             kwargs['deleted_parameters'] = [Parameter.from_dict(item) for item in data['deleted_parameters']]
+            
 
 
         return cls(**kwargs)
