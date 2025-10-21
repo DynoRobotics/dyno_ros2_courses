@@ -160,38 +160,3 @@ def setup_logging(node: 'Node', level: int = logging.INFO, publish_to_rosout: bo
                 root_logger.addHandler(rosout_handler)
             except Exception as e:
                 logging.warning(f"Failed to setup /rosout publishing: {e}")
-
-
-# Legacy compatibility wrapper for ROS2-style get_logger()
-class Logger:
-    """
-    Legacy compatibility wrapper for rclpy-style get_logger().
-    
-    DEPRECATED: Use Python's standard logging.getLogger(__name__) instead.
-    """
-    
-    def __init__(self, node_name: str):
-        """Initialize logger wrapper."""
-        self.logger = logging.getLogger(node_name)
-    
-    def debug(self, msg: str, *args, **kwargs):
-        """Log debug message."""
-        self.logger.debug(msg, *args, **kwargs)
-    
-    def info(self, msg: str, *args, **kwargs):
-        """Log info message."""
-        self.logger.info(msg, *args, **kwargs)
-    
-    def warn(self, msg: str, *args, **kwargs):
-        """Log warning message."""
-        self.logger.warning(msg, *args, **kwargs)
-    
-    def error(self, msg: str, *args, **kwargs):
-        """Log error message."""
-        self.logger.error(msg, *args, **kwargs)
-    
-    def fatal(self, msg: str, *args, **kwargs):
-        """Log fatal message."""
-        self.logger.critical(msg, *args, **kwargs)
-    
-    warning = warn  # Alias

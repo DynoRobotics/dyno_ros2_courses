@@ -13,7 +13,6 @@ import time
 import zenoh
 from typing import Any, Callable, Optional, Type
 
-from .message_serializer import MessageSerializer
 from .liveliness_manager import LivelinessManager
 
 logger = logging.getLogger(__name__)
@@ -68,9 +67,6 @@ class Subscriber:
             self.namespace = ""
             self._own_session = True
             self.node = None
-        
-        # Initialize components
-        self.serializer = MessageSerializer()
         
         # Create DDS interop key for the topic
         self.dds_key = self._create_dds_interop_key()
@@ -222,14 +218,8 @@ class Subscriber:
             # Extract payload
             payload = bytes(sample.payload)
             
-            # Deserialize the message
-            # Check if msg_type has a deserialize() method (unified CDR types)
-            if hasattr(self.msg_type, 'deserialize') and callable(self.msg_type.deserialize):
-                # Use the message type's deserialize() method
-                msg = self.msg_type.deserialize(payload)
-            else:
-                # Fall back to the serializer for ROS 2 messages
-                msg = self.serializer.deserialize_message(payload, self.msg_type)
+            # Deserialize using the message type's built-in CDR deserialization
+            msg = self.msg_type.deserialize(payload)
             
             # Call user callback (async or sync)
             if self.is_async_callback:

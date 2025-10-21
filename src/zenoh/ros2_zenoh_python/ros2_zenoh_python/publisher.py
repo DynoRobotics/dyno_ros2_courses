@@ -11,9 +11,8 @@ import os
 import struct
 import time
 import zenoh
-from typing import Any, Callable, Optional, Type, Union
+from typing import Any, Optional, Type
 
-from .message_serializer import MessageSerializer
 from .liveliness_manager import LivelinessManager
 
 logger = logging.getLogger(__name__)
@@ -64,9 +63,6 @@ class Publisher:
             self.namespace = ""
             self._own_session = True
             self.node = None
-        
-        # Initialize components
-        self.serializer = MessageSerializer()
         
         # Generate stable publisher GID
         self.publisher_gid = os.urandom(16)
@@ -207,21 +203,17 @@ class Publisher:
         Publish a message.
         
         Args:
-            msg: Message instance (ROS 2, unified CDR type, or simplified)
+            msg: Message instance with serialize() method (bundled or generated CDR type)
         """
-        # Check if the message has a serialize() method (unified CDR types)
-        if hasattr(msg, 'serialize') and callable(msg.serialize):
-            # Use the message's own serialize() method
-            payload = msg.serialize()
-        # Check if it's a ROS 2 message
-        elif hasattr(msg, '__module__') and 'geometry_msgs' in str(msg.__module__):
-            # ROS 2 message - use the serializer
-            payload = self.serializer.serialize_message(msg)
-        else:
-            # Convert simplified message to ROS 2 and serialize
-            from .converter import MessageConverter
-            ros2_msg = MessageConverter.to_ros2(msg, self.msg_type)
-            payload = self.serializer.serialize_message(ros2_msg)
+        # All bundled and generated messages have .serialize() method
+        if not hasattr(msg, 'serialize') or not callable(msg.serialize):
+            raise ValueError(
+                f"Message type {type(msg)} must have a serialize() method. "
+                f"Use bundled messages from _bundled_msgs or generated messages from ros2_interfaces_py."
+            )
+        
+        # Serialize using the message's built-in CDR serialization
+        payload = msg.serialize()
         
         # Build attachment
         attachment = self._build_attachment(self.sequence_number)
@@ -234,24 +226,6 @@ class Publisher:
             encoding=zenoh.Encoding("application/x-cdr"),
             attachment=attachment
         )
-    
-    def publish_twist(self, linear_x: float = 0.0, linear_y: float = 0.0, linear_z: float = 0.0,
-                     angular_x: float = 0.0, angular_y: float = 0.0, angular_z: float = 0.0):
-        """
-        Convenience method to publish a Twist message.
-        
-        Args:
-            linear_x, linear_y, linear_z: Linear velocity components
-            angular_x, angular_y, angular_z: Angular velocity components
-        """
-        if self.message_type.__name__ != 'Twist':
-            raise ValueError(f"Expected Twist message type, got {self.message_type.__name__}")
-        
-        twist_message = self.serializer.create_twist_message(
-            linear_x=linear_x, linear_y=linear_y, linear_z=linear_z,
-            angular_x=angular_x, angular_y=angular_y, angular_z=angular_z
-        )
-        self.publish(twist_message)
     
     def destroy(self):
         """Destroy the publisher and clean up resources."""

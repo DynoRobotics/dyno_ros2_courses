@@ -20,35 +20,31 @@ class Node:
     def __init__(self, node_name: str, 
                  zenoh_session: Optional[zenoh.Session] = None,
                  namespace: str = "",
-                 zenoh_config: Optional[zenoh.Config] = None,
                  enable_rosout: bool = True):
         """
         Initialize a ROS 2-compatible node.
         
         Args:
             node_name: ROS 2 node name
-            zenoh_session: Shared Zenoh session (preferred). If provided, zenoh_config is ignored.
+            zenoh_session: Shared Zenoh session (recommended for resource efficiency).
+                          If not provided, creates a default session in client mode
+                          connecting to localhost:7447 for ROS2 interoperability.
+                          For custom configuration, create your own session and pass it in.
             namespace: ROS 2 node namespace
-            zenoh_config: Zenoh configuration (only used if zenoh_session is None).
-                         If not provided, defaults to client mode connecting to localhost:7447
-                         for ROS2 interoperability with rmw_zenoh_cpp.
             enable_rosout: If True, automatically setup logging to publish to /rosout
         """
         self.node_name = node_name
         self.namespace = namespace
         
-        # Use provided session or create a new one
+        # Use provided session or create a new one with default config
         if zenoh_session is not None:
             self.session = zenoh_session
             self._owns_session = False
         else:
-            # Default config: client mode connecting to ROS2 Zenoh router
-            if zenoh_config is None:
-                config = zenoh.Config()
-                config.insert_json5("mode", '"client"')
-                config.insert_json5("connect/endpoints", '["tcp/localhost:7447"]')
-            else:
-                config = zenoh_config
+            # Default config: client mode connecting to ROS2 Zenoh router at localhost:7447
+            config = zenoh.Config()
+            config.insert_json5("mode", '"client"')
+            config.insert_json5("connect/endpoints", '["tcp/localhost:7447"]')
             self.session = zenoh.open(config)
             self._owns_session = True
         
@@ -118,10 +114,6 @@ class Node:
             subscription.destroy()
             del self.subscribers[subscription.topic]
     
-    def get_logger(self) -> 'Logger':
-        """Get a logger for this node."""
-        from .logger import Logger
-        return Logger(self.node_name)
     
     def destroy_node(self):
         """Destroy the node and clean up all resources."""

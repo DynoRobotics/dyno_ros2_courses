@@ -170,12 +170,23 @@ session.close()
 ```
 
 #### Custom Configuration
+
+For custom Zenoh configurations, create your own session and pass it to the Node:
+
 ```python
+import zenoh
+
+# Create custom config
 config = zenoh.Config()
 config.insert_json5("mode", '"peer"')  # Peer-to-peer mode
+session = zenoh.open(config)
 
-async with Node('my_node', zenoh_config=config) as node:
-    pass
+try:
+    async with Node('my_node', zenoh_session=session) as node:
+        # Use the node
+        pass
+finally:
+    session.close()
 ```
 
 ### Publishing Messages
@@ -361,7 +372,6 @@ class Node:
         node_name: str,
         zenoh_session: Optional[zenoh.Session] = None,
         namespace: str = "",
-        zenoh_config: Optional[zenoh.Config] = None,
         enable_rosout: bool = True
     )
     
