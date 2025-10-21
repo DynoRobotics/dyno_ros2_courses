@@ -4,6 +4,7 @@ Publisher Module
 ROS 2-compatible publisher using Zenoh as the transport layer.
 """
 
+import logging
 import os
 import struct
 import time
@@ -12,6 +13,8 @@ from typing import Any, Callable, Optional, Type, Union
 
 from .message_serializer import MessageSerializer
 from .liveliness_manager import LivelinessManager
+
+logger = logging.getLogger(__name__)
 
 
 class Publisher:
@@ -31,6 +34,15 @@ class Publisher:
         self.msg_type = msg_type
         self.topic = topic
         self.qos_profile = qos_profile or {}
+        
+        # Convert QoS dict to ROS2 numeric values
+        # Reliability: 0=BEST_EFFORT, 1=RELIABLE
+        # Durability: 0=SYSTEM_DEFAULT, 1=TRANSIENT_LOCAL, 2=VOLATILE
+        # History: 1=KEEP_LAST, 2=KEEP_ALL
+        self.qos_reliability = 1 if self.qos_profile.get('reliability', 'reliable') == 'reliable' else 0
+        self.qos_durability = {'transient_local': 1, 'volatile': 2}.get(self.qos_profile.get('durability', 'volatile'), 2)
+        self.qos_history = 1 if self.qos_profile.get('history', 'keep_last') == 'keep_last' else 2
+        self.qos_depth = self.qos_profile.get('depth', 10)
         
         # Use provided node or create our own session
         if node is not None:
@@ -64,7 +76,7 @@ class Publisher:
         # Declare liveliness token for ROS 2 metadata
         self.liveliness_token = self._declare_liveliness_token()
         
-        print(f"Publisher created for topic '{self.topic}'")
+        logger.debug(f"Publisher created for topic '{self.topic}'")
     
     def _create_dds_interop_key(self) -> str:
         """Create DDS interop key for the topic."""
@@ -80,7 +92,11 @@ class Publisher:
     
     def _get_message_type_string(self) -> str:
         """Get the message type string for DDS interop."""
-        # Common message type mappings
+        # Check if the message type has a DDS_TYPE_NAME constant (unified CDR types)
+        if hasattr(self.msg_type, 'DDS_TYPE_NAME'):
+            return self.msg_type.DDS_TYPE_NAME
+        
+        # Fallback to common message type mappings
         type_mappings = {
             'geometry_msgs.msg.Twist': 'geometry_msgs::msg::dds_::Twist_',
             'geometry_msgs.msg.Vector3': 'geometry_msgs::msg::dds_::Vector3_',
@@ -105,7 +121,11 @@ class Publisher:
     
     def _get_type_hash(self) -> str:
         """Get the type hash for the message type."""
-        # Common type hashes for standard messages
+        # Check if the message type has a TYPE_HASH constant (unified CDR types)
+        if hasattr(self.msg_type, 'TYPE_HASH'):
+            return self.msg_type.TYPE_HASH
+        
+        # Fallback to common type hashes for standard messages
         type_hashes = {
             'geometry_msgs.msg.Twist': 'RIHS01_9c45bf16fe0983d80e3cfe750d6835843d265a9a6c46bd2e609fcddde6fb8d2a',
             'geometry_msgs.msg.Vector3': 'RIHS01_4a7b354a29a8a324c9f9ce904d36969a1eb5b805c515e434cbabac4562cb363d',
@@ -133,12 +153,21 @@ class Publisher:
         message_type_str = self._get_message_type_string()
         type_hash = self._get_type_hash()
         
+        # Build QoS string for liveliness token
+        qos_str = self.liveliness_manager.qos_to_keyexpr(
+            reliability=self.qos_reliability,
+            durability=self.qos_durability,
+            history=self.qos_history,
+            depth=self.qos_depth
+        )
+        
         return self.liveliness_manager.declare_publisher_token(
             topic_name=self.topic,
             message_type=message_type_str,
             type_hash=type_hash,
             node_name=self.node_name,
-            node_namespace=self.namespace
+            node_namespace=self.namespace,
+            qos=qos_str
         )
     
     def _build_attachment(self, sequence: int, version: int = 3) -> bytes:
@@ -176,19 +205,21 @@ class Publisher:
         Publish a message.
         
         Args:
-            msg: Message instance (ROS 2 or simplified)
+            msg: Message instance (ROS 2, unified CDR type, or simplified)
         """
-        # Convert to ROS 2 message if needed
-        if hasattr(msg, '__module__') and 'geometry_msgs' in str(msg.__module__):
-            # Already a ROS 2 message
-            ros2_msg = msg
+        # Check if the message has a serialize() method (unified CDR types)
+        if hasattr(msg, 'serialize') and callable(msg.serialize):
+            # Use the message's own serialize() method
+            payload = msg.serialize()
+        # Check if it's a ROS 2 message
+        elif hasattr(msg, '__module__') and 'geometry_msgs' in str(msg.__module__):
+            # ROS 2 message - use the serializer
+            payload = self.serializer.serialize_message(msg)
         else:
-            # Convert simplified message to ROS 2
+            # Convert simplified message to ROS 2 and serialize
             from .converter import MessageConverter
             ros2_msg = MessageConverter.to_ros2(msg, self.msg_type)
-        
-        # Serialize the message
-        payload = self.serializer.serialize_message(ros2_msg)
+            payload = self.serializer.serialize_message(ros2_msg)
         
         # Build attachment
         attachment = self._build_attachment(self.sequence_number)
@@ -229,7 +260,7 @@ class Publisher:
         if self._own_session and hasattr(self, 'session'):
             self.session.close()
         
-        print(f"Publisher for topic '{self.topic}' destroyed")
+        logger.debug(f"Publisher for topic '{self.topic}' destroyed")
     
     def close(self):
         """Legacy method - use destroy() instead."""

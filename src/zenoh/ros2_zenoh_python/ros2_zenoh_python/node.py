@@ -5,16 +5,20 @@ ROS 2-compatible node using Zenoh as the transport layer.
 Designed to match rclpy interface as closely as possible.
 """
 
+import logging
 import zenoh
 from typing import Optional, Dict, Any, Type, Callable
 from .liveliness_manager import LivelinessManager
+
+logger = logging.getLogger(__name__)
 
 
 class Node:
     """ROS 2-compatible node using Zenoh transport."""
     
     def __init__(self, node_name: str, namespace: str = "", 
-                 zenoh_config: Optional[zenoh.Config] = None):
+                 zenoh_config: Optional[zenoh.Config] = None,
+                 enable_rosout: bool = True):
         """
         Initialize a ROS 2-compatible node.
         
@@ -22,6 +26,7 @@ class Node:
             node_name: ROS 2 node name
             namespace: ROS 2 node namespace
             zenoh_config: Zenoh configuration
+            enable_rosout: If True, automatically setup logging to publish to /rosout
         """
         self.node_name = node_name
         self.namespace = namespace
@@ -37,7 +42,12 @@ class Node:
         self.publishers: Dict[str, Any] = {}
         self.subscribers: Dict[str, Any] = {}
         
-        print(f"Node '{self.node_name}' created with Zenoh session")
+        # Automatically setup logging to /rosout if enabled
+        if enable_rosout:
+            from .logger import setup_logging
+            setup_logging(self, level=logging.INFO)
+        
+        logger.debug(f"Node '{self.node_name}' created with Zenoh session")
     
     def create_publisher(self, msg_type: Type, topic: str, qos_profile: Optional[dict] = None) -> 'Publisher':
         """
@@ -108,7 +118,7 @@ class Node:
         if hasattr(self, 'session'):
             self.session.close()
         
-        print(f"Node '{self.node_name}' destroyed")
+        logger.debug(f"Node '{self.node_name}' destroyed")
     
     def __enter__(self):
         """Context manager entry."""

@@ -1,230 +1,339 @@
-# ROS 2 Interface Parser and Simplified Type Generator
+# Multi-Language ROS 2 Message Generator
 
-This directory contains tools for parsing ROS 2 interface packages and generating simplified Python types based on message definitions.
+This tool generates ROS 2 message types for multiple languages with proper dependency resolution and cross-language conversion capabilities, especially designed for Tauri applications.
 
-## Tools
+## Features
 
-### 1. `generate_simplified_types.py`
+- **Multi-Language Support**: Generate message types for Python, Rust, C, and TypeScript
+- **Dependency Resolution**: Automatically handles message dependencies (e.g., Twist depends on Vector3)
+- **Tauri Integration**: Specialized generators for Tauri web applications
+- **CDR Serialization**: Support for manual CDR serialization without ROS 2 dependencies
+- **Cross-Language Conversion**: Built-in conversion functions between Rust and TypeScript
 
-A comprehensive parser that processes entire ROS 2 interface packages and generates Python modules with simplified dataclasses.
+## Quick Start
 
-**Features:**
-- Parses all `.msg` files in a directory tree
-- Handles cross-package dependencies
-- Generates proper imports and type annotations
-- Supports arrays and bounded arrays
-- Handles builtin types and custom message types
+### 1. Generate Multi-Language Types
 
-**Usage:**
 ```bash
-# Generate simplified types for geometry_msgs package
-python3 generate_simplified_types.py --input /opt/ros/jazzy/share/geometry_msgs/msg --output generated_types --package geometry_msgs --verbose
+# Generate types for a single message
+python3 multi_lang_generator.py --input /opt/ros/jazzy/share/geometry_msgs/msg/Twist.msg --output output --languages python rust typescript --verbose
 
-# Generate types for all packages in a directory
-python3 generate_simplified_types.py --input /opt/ros/jazzy/share --output generated_types --verbose
+# Generate types for all messages in a package
+python3 multi_lang_generator.py --input /opt/ros/jazzy/share/geometry_msgs/msg --output output --languages python rust typescript --tauri --verbose
 ```
 
-### 2. `simple_type_generator.py`
+### 2. Generate Complete Tauri Integration
 
-A simpler, more focused generator that creates clean simplified types for specific message files or packages.
-
-### 3. `integrate_types.py`
-
-A tool for integrating generated types into the existing `ros2_zenoh_python.messages` module.
-
-**Features:**
-- Integrates generated classes into existing messages.py
-- Updates `__all__` lists automatically
-- Supports dry-run mode for preview
-- Handles multiple packages
-
-**Usage:**
 ```bash
-# Integrate generated types into messages module
-python3 integrate_types.py --package geometry_msgs --generated-file generated_types/geometry_msgs_messages.py
+# Generate complete Tauri integration for Twist message
+python3 tauri_integration_generator.py /opt/ros/jazzy/share/geometry_msgs/msg/Twist.msg tauri_output
 
-# Preview integration without making changes
-python3 integrate_types.py --package geometry_msgs --generated-file generated_types/geometry_msgs_messages.py --dry-run
+# Generate for multiple messages
+python3 tauri_integration_generator.py /opt/ros/jazzy/share/geometry_msgs/msg tauri_output
 ```
 
-### 4. `integrate_workflow.py`
+## Generated Files
 
-A complete workflow script that generates and integrates types for multiple packages in one command.
-
-**Features:**
-- End-to-end workflow from package list to integrated types
-- Supports both individual packages and package lists
-- Dry-run mode for testing
-- Automatic cleanup of temporary files
-
-**Usage:**
-```bash
-# Complete workflow for multiple packages
-python3 integrate_workflow.py --packages geometry_msgs std_msgs nav_msgs
-
-# Use existing package list file
-python3 integrate_workflow.py --package-list package_list.txt
-
-# Preview workflow without making changes
-python3 integrate_workflow.py --packages geometry_msgs std_msgs --dry-run
-
-# Create a package list file
-python3 integrate_workflow.py --packages geometry_msgs std_msgs nav_msgs --create-list --list-file my_packages.txt
-```
-
-## Integration Workflow
-
-The recommended approach for adding new ROS 2 message types to `ros2_zenoh_python`:
-
-1. **Generate Integration Code**: Use `simple_type_generator.py` with `--integrate` flag
-2. **Integrate into Module**: Use `integrate_types.py` to merge into `messages.py`
-3. **Update Exports**: Update `__init__.py` to export new types
-4. **Test**: Verify the integrated types work correctly
-
-**Quick Start:**
-```bash
-# Complete workflow for common packages
-python3 integrate_workflow.py --packages geometry_msgs std_msgs nav_msgs --dry-run
-
-# If satisfied with preview, run without --dry-run
-python3 integrate_workflow.py --packages geometry_msgs std_msgs nav_msgs
-```
-
-**Usage:**
-
-#### **Process ROS 2 Package by Name (Recommended)**
-```bash
-# Generate simplified types for a single ROS 2 package
-python3 simple_type_generator.py --package geometry_msgs --output-dir generated_types --verbose
-
-# Generate types for std_msgs package
-python3 simple_type_generator.py --package std_msgs --output-dir generated_types
-```
-
-#### **Batch Process Multiple Packages**
-```bash
-# Create a package list file
-echo -e "geometry_msgs\nstd_msgs\nnav_msgs" > package_list.txt
-
-# Process all packages in the list
-python3 simple_type_generator.py --package-list package_list.txt --output-dir generated_types --verbose
-```
-
-#### **Generate Integration Code for Module Integration**
-```bash
-# Generate code ready for integration into ros2_zenoh_python.messages
-python3 simple_type_generator.py --package geometry_msgs --integrate --output-dir generated_types
-
-# Batch generate integration code for multiple packages
-python3 simple_type_generator.py --package-list package_list.txt --integrate --output-dir generated_types
-```
-
-#### **Process Individual Files (Legacy)**
-```bash
-# Generate simplified types for a single message file
-python3 simple_type_generator.py --input /opt/ros/jazzy/share/geometry_msgs/msg/Twist.msg --output twist_simplified.py --verbose
-
-# Generate simplified types for all messages in a directory
-python3 simple_type_generator.py --input /opt/ros/jazzy/share/geometry_msgs/msg --output geometry_msgs_simplified.py --verbose
-```
-
-## Package List File Format
-
-When using `--package-list`, create a text file with one package name per line:
+### Multi-Language Generator Output
 
 ```
-# Common ROS 2 message packages
-# This file contains a list of ROS 2 packages to process for simplified types
-
-# Core geometry messages
-geometry_msgs
-
-# Standard messages
-std_msgs
-
-# Built-in interfaces
-builtin_interfaces
-
-# Navigation messages
-nav_msgs
-
-# Sensor messages
-sensor_msgs
+output/
+├── python/
+│   └── geometry_msgs/
+│       ├── twist.py
+│       └── vector3.py
+├── rust/
+│   └── geometry_msgs/
+│       ├── twist.rs
+│       └── vector3.rs
+├── c/
+│   └── geometry_msgs/
+│       ├── twist.h
+│       └── vector3.h
+├── typescript/
+│   └── geometry_msgs/
+│       ├── twist.ts
+│       └── vector3.ts
+└── tauri_conversions/
+    ├── twist_conversions.rs
+    └── vector3_conversions.rs
 ```
 
-**Rules:**
-- One package name per line
-- Lines starting with `#` are comments and ignored
-- Empty lines are ignored
-- Package names should match exactly what's installed in your ROS 2 system
+### Tauri Integration Output
 
-## Generated Code Examples
-
-### Input: `Twist.msg`
 ```
-geometry_msgs/Vector3 linear
-geometry_msgs/Vector3 angular
+tauri_output/
+├── ros2_backend.rs          # Complete Rust backend with Tauri commands
+├── ros2Types.ts             # TypeScript types and API functions
+├── Ros2ControlPanel.tsx     # Complete React component
+└── tauri_config.json        # Tauri configuration
 ```
 
-### Output: `twist_simplified.py`
+## Usage Examples
+
+### Python Usage
+
 ```python
-from dataclasses import dataclass, field
-from typing import List
+from geometry_msgs.twist import Twist
+from geometry_msgs.vector3 import Vector3
 
-# Common ROS 2 message types converted to simplified Python dataclasses
+# Create a Twist message
+twist = Twist(
+    linear=Vector3(x=1.0, y=0.0, z=0.0),
+    angular=Vector3(x=0.0, y=0.0, z=0.5)
+)
 
-@dataclass
-class Twist:
-    """Simplified geometry_msgs.msg.Twist message."""
-    linear: Vector3 = Vector3()
-    angular: Vector3 = Vector3()
+# Convert to dictionary for JSON serialization
+twist_dict = twist.to_dict()
+
+# Create from dictionary
+twist_from_dict = Twist.from_dict(twist_dict)
 ```
 
-## Integration with ros2_zenoh_python
+### Rust Usage
 
-The generated simplified types can be easily integrated with the `ros2_zenoh_python` package:
+```rust
+use geometry_msgs::{Twist, Vector3};
 
-1. **Copy generated files** to your project directory
-2. **Import the simplified types** in your code
-3. **Use with ros2_zenoh_python** publishers and subscribers
+// Create a Twist message
+let twist = Twist {
+    linear: Vector3 { x: 1.0, y: 0.0, z: 0.0 },
+    angular: Vector3 { x: 0.0, y: 0.0, z: 0.5 },
+};
 
-**Example:**
+// Convert to JSON
+let json = twist.to_json()?;
+
+// Create from JSON
+let twist_from_json = Twist::from_json(&json)?;
+```
+
+### TypeScript Usage
+
+```typescript
+import { Twist, Vector3, publishTwist, useTwist } from './ros2Types';
+
+// Create a Twist message
+const twist: Twist = {
+  linear: { x: 1.0, y: 0.0, z: 0.0 },
+  angular: { x: 0.0, y: 0.0, z: 0.5 }
+};
+
+// Publish using Tauri command
+await publishTwist(twist);
+
+// Use React hook
+const { messages, publish } = useTwist();
+```
+
+### C Usage
+
+```c
+#include "geometry_msgs/twist.h"
+#include "geometry_msgs/vector3.h"
+
+// Create a Twist message
+ros2_twist_t twist = {
+    .linear = { .x = 1.0, .y = 0.0, .z = 0.0 },
+    .angular = { .x = 0.0, .y = 0.0, .z = 0.5 }
+};
+
+// Serialize to CDR
+uint8_t buffer[1024];
+size_t serialized_size;
+serialize_ros2_twist(&twist, buffer, sizeof(buffer), &serialized_size);
+
+// Deserialize from CDR
+ros2_twist_t deserialized_twist;
+deserialize_ros2_twist(buffer, serialized_size, &deserialized_twist);
+```
+
+## Tauri Integration
+
+### 1. Backend Integration
+
+Copy the generated `ros2_backend.rs` to your Tauri `src/` directory and add the commands to your `main.rs`:
+
+```rust
+// In src/main.rs
+mod ros2_backend;
+
+fn main() {
+    tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![
+            ros2_backend::publish_twist,
+            ros2_backend::subscribe_twist,
+            ros2_backend::publish_vector3,
+            ros2_backend::subscribe_vector3,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
+```
+
+### 2. Frontend Integration
+
+Copy the generated `ros2Types.ts` to your frontend `src/` directory and use the React component:
+
+```tsx
+// In src/App.tsx
+import { Ros2ControlPanel } from './Ros2ControlPanel';
+
+function App() {
+  return (
+    <div>
+      <Ros2ControlPanel />
+    </div>
+  );
+}
+```
+
+### 3. Configuration
+
+Update your `tauri.conf.json` with the generated commands:
+
+```json
+{
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "url": "/",
+        "commands": [
+          "publish_twist",
+          "subscribe_twist",
+          "publish_vector3",
+          "subscribe_vector3"
+        ]
+      }
+    ]
+  }
+}
+```
+
+## Advanced Features
+
+### Custom Message Types
+
+The generator automatically handles custom message types and their dependencies. For example, if `Twist` depends on `Vector3`, the generator will:
+
+1. Generate `Vector3` first
+2. Generate `Twist` with proper imports
+3. Handle the dependency chain correctly
+
+### CDR Serialization
+
+For manual CDR serialization without ROS 2 dependencies:
+
 ```python
-from ros2_zenoh_python import Node, Publisher
-from geometry_msgs_simplified import Twist, Vector3
+# Python CDR serialization
+twist_bytes = twist.serialize_cdr()
 
-# Create a node
-with Node("my_node") as node:
-    # Create publisher using simplified types
-    pub = node.create_publisher(Twist, "/turtle1/cmd_vel")
-    
-    # Create and publish a message
-    msg = Twist(
-        linear=Vector3(x=1.0, y=0.0, z=0.0),
-        angular=Vector3(x=0.0, y=0.0, z=0.5)
-    )
-    pub.publish(msg)
+# C CDR serialization
+uint8_t buffer[1024];
+size_t size;
+serialize_ros2_twist(&twist, buffer, sizeof(buffer), &size);
 ```
 
-## Benefits
+### Cross-Language Conversion
 
-1. **No ROS 2 Dependencies**: Generated types don't require ROS 2 installation
-2. **Clean API**: Simple dataclasses with proper type hints
-3. **Easy Integration**: Works seamlessly with `ros2_zenoh_python`
-4. **Automatic Generation**: Parse any ROS 2 package and generate types
-5. **Type Safety**: Full Python type annotations for better IDE support
+Built-in conversion functions for Tauri applications:
 
-## Limitations
+```rust
+// Rust to TypeScript
+let json = twist.to_typescript()?;
+```
 
-- Cross-package dependencies require manual handling
-- Complex message types may need additional customization
-- Generated types are simplified versions, not full ROS 2 message implementations
-- Some advanced ROS 2 features (like constants) are not supported
+```typescript
+// TypeScript to Rust
+const rustData = typescriptToRustTwist(twistData);
+```
 
-## Future Enhancements
+## Command Line Options
 
-- Support for service definitions (`.srv` files)
-- Support for action definitions (`.action` files)
-- Automatic dependency resolution
-- Integration with ROS 2 message generation tools
-- Support for message constants and default values
+### Multi-Language Generator
+
+```bash
+python3 multi_lang_generator.py [OPTIONS]
+
+Options:
+  -i, --input PATH          Input .msg file or directory
+  -o, --output PATH         Output directory
+  -l, --languages LANG      Languages to generate (python, rust, c, typescript)
+  -t, --tauri              Generate Tauri conversion functions
+  -p, --package NAME        Package name override
+  -v, --verbose            Verbose output
+```
+
+### Tauri Integration Generator
+
+```bash
+python3 tauri_integration_generator.py <input_msg_file_or_dir> <output_dir>
+```
+
+## Integration with Existing Projects
+
+### For Your Tauri ROS 2 App
+
+1. **Generate types for your specific messages**:
+   ```bash
+   python3 tauri_integration_generator.py /opt/ros/jazzy/share/geometry_msgs/msg/Twist.msg ./generated
+   ```
+
+2. **Replace your existing ros2.rs**:
+   ```bash
+   cp generated/ros2_backend.rs src/ros2.rs
+   ```
+
+3. **Update your App.tsx**:
+   ```bash
+   cp generated/Ros2ControlPanel.tsx src/Ros2ControlPanel.tsx
+   ```
+
+4. **Add the types to your frontend**:
+   ```bash
+   cp generated/ros2Types.ts src/ros2Types.ts
+   ```
+
+### For C Projects
+
+1. **Generate C headers**:
+   ```bash
+   python3 multi_lang_generator.py --input /opt/ros/jazzy/share/geometry_msgs/msg --output c_output --languages c
+   ```
+
+2. **Include in your CMakeLists.txt**:
+   ```cmake
+   include_directories(c_output/c/geometry_msgs)
+   ```
+
+3. **Link with Micro-CDR**:
+   ```cmake
+   find_package(microcdr REQUIRED)
+   target_link_libraries(your_target microcdr)
+   ```
+
+## Best Practices
+
+1. **Generate all dependencies**: Always generate the entire package to ensure all dependencies are resolved
+2. **Use Tauri integration**: For web applications, use the Tauri integration generator for complete setup
+3. **Version control**: Commit generated files to version control for consistency
+4. **CI/CD integration**: Add generation to your build pipeline for automated updates
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Missing dependencies**: Ensure you generate the entire package, not just individual messages
+2. **Import errors**: Check that all generated files are in the correct directory structure
+3. **Tauri commands not found**: Verify your `tauri.conf.json` includes all generated commands
+
+### Debug Mode
+
+Use `--verbose` flag for detailed output:
+
+```bash
+python3 multi_lang_generator.py --input /opt/ros/jazzy/share/geometry_msgs/msg --output output --verbose
+```
+
+This will show you exactly which files are being generated and any issues encountered.

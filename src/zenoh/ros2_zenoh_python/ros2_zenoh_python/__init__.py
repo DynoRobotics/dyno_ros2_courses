@@ -47,3 +47,6 @@ __all__ = [
     # Message types
     "Vector3", "Twist", "Time", "Log", "Pose", "Point", "Quaternion", "PoseStamped"
 ]
+
+# Note: For unified CDR types, use ros2_interfaces_py package separately
+# This package is designed to work with standard ROS 2 message types

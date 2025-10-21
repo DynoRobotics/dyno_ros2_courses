@@ -91,7 +91,7 @@ class LivelinessManager:
     
     def declare_publisher_token(self, topic_name: str, message_type: str, 
                                type_hash: str, node_name: str = "zenoh_publisher",
-                               node_namespace: str = "") -> zenoh.LivelinessToken:
+                               node_namespace: str = "", qos: Optional[str] = None) -> zenoh.LivelinessToken:
         """
         Declare a liveliness token for a publisher.
         
@@ -101,6 +101,7 @@ class LivelinessManager:
             type_hash: Message type hash
             node_name: ROS 2 node name
             node_namespace: ROS 2 node namespace
+            qos: QoS settings as string (optional, uses defaults if not provided)
             
         Returns:
             Liveliness token instance
@@ -111,7 +112,8 @@ class LivelinessManager:
             message_type=message_type,
             type_hash=type_hash,
             node_name=node_name,
-            node_namespace=node_namespace
+            node_namespace=node_namespace,
+            qos=qos
         )
         
         token = self.session.liveliness().declare_token(zenoh.KeyExpr(keyexpr))

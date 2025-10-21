@@ -1,0 +1,30 @@
+[package]
+name = "ros2_zenoh_rs"
+version = "0.1.0"
+edition = "2021"
+authors = ["ROS 2 Zenoh Team"]
+description = "ROS 2 over Zenoh transport layer in Rust"
+license = "Apache-2.0"
+resolver = "2"
+
+[dependencies]
+zenoh = { version = "=1.5.1", default-features = false, features = ["transport_tcp", "transport_udp", "transport_unixsock-stream", "transport_ws"] }
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+anyhow = "1.0"
+rand = "0.8"
+
+# For CDR serialization - use the generated ros2_interfaces_rs
+ros2_interfaces_rs = { path = "../ros2_zenoh_python/tools/unified_output/rust/ros2_interfaces_rs" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+
+[[example]]
+name = "publisher"
+path = "examples/publisher.rs"
+
+[[example]]
+name = "subscriber"
+path = "examples/subscriber.rs"
+

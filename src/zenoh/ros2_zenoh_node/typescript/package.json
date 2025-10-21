@@ -1,0 +1,28 @@
+{
+  "name": "@ros2-zenoh/node",
+  "version": "0.1.0",
+  "description": "High-level TypeScript API for ROS 2 over Zenoh",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "ros2",
+    "zenoh",
+    "robotics",
+    "typescript"
+  ],
+  "author": "ROS 2 Zenoh Team",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@ros2-cdr/interfaces-ts": "file:../../ros2_zenoh_python/tools/unified_output/typescript/ros2-cdr-interfaces",
+    "@ros2-zenoh/native": "file:../"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.22",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.0.0"
+  }
+}

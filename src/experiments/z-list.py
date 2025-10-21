@@ -73,8 +73,8 @@ def parse_args() -> argparse.Namespace:
         metavar="ENDPOINT",
         action="append",
         type=str,
-        default=["tcp/127.0.0.1:7447"],   # 👈 Default endpoint here
-        help="Endpoints to connect to (default: tcp/127.0.0.1:7447). "
+        default=["tcp/172.18.0.2:7447"],   # 👈 Default endpoint here
+        help="Endpoints to connect to (default: tcp/0.0.0.0:7447). "
              "Use multiple --connect to add more."
     )
     return p.parse_args()

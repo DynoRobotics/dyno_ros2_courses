@@ -1,0 +1,25 @@
+[package]
+name = "ros2-zenoh-native"
+version = "0.1.0"
+edition = "2021"
+authors = ["ROS 2 Zenoh Team"]
+description = "NAPI-RS bindings for ROS 2 over Zenoh"
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# NAPI bindings
+napi = { version = "2.16", features = ["napi4"] }
+napi-derive = "2.16"
+
+# Our Rust library
+ros2_zenoh_rs = { path = "../ros2_zenoh_rs" }
+
+[build-dependencies]
+napi-build = "2.1"
+
+[profile.release]
+lto = true
+

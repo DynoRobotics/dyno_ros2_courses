@@ -4,6 +4,7 @@ Subscriber Module
 ROS 2-compatible subscriber using Zenoh as the transport layer.
 """
 
+import logging
 import struct
 import time
 import zenoh
@@ -11,6 +12,8 @@ from typing import Any, Callable, Optional, Type
 
 from .message_serializer import MessageSerializer
 from .liveliness_manager import LivelinessManager
+
+logger = logging.getLogger(__name__)
 
 
 class Subscriber:
@@ -67,7 +70,7 @@ class Subscriber:
             self._message_handler
         )
         
-        print(f"Subscriber created for topic '{self.topic}'")
+        logger.debug(f"Subscriber created for topic '{self.topic}'")
     
     def _create_dds_interop_key(self) -> str:
         """Create DDS interop key for the topic."""
@@ -83,7 +86,11 @@ class Subscriber:
     
     def _get_message_type_string(self) -> str:
         """Get the message type string for DDS interop."""
-        # Common message type mappings
+        # Check if the message type has a DDS_TYPE_NAME constant (unified CDR types)
+        if hasattr(self.msg_type, 'DDS_TYPE_NAME'):
+            return self.msg_type.DDS_TYPE_NAME
+        
+        # Fallback to common message type mappings
         type_mappings = {
             'geometry_msgs.msg.Twist': 'geometry_msgs::msg::dds_::Twist_',
             'geometry_msgs.msg.Vector3': 'geometry_msgs::msg::dds_::Vector3_',
@@ -108,7 +115,11 @@ class Subscriber:
     
     def _get_type_hash(self) -> str:
         """Get the type hash for the message type."""
-        # Common type hashes for standard messages
+        # Check if the message type has a TYPE_HASH constant (unified CDR types)
+        if hasattr(self.msg_type, 'TYPE_HASH'):
+            return self.msg_type.TYPE_HASH
+        
+        # Fallback to common type hashes for standard messages
         type_hashes = {
             'geometry_msgs.msg.Twist': 'RIHS01_9c45bf16fe0983d80e3cfe750d6835843d265a9a6c46bd2e609fcddde6fb8d2a',
             'geometry_msgs.msg.Vector3': 'RIHS01_4a7b354a29a8a324c9f9ce904d36969a1eb5b805c515e434cbabac4562cb363d',
@@ -187,40 +198,38 @@ class Subscriber:
                 return {"sequence": None, "timestamp_ns": None, "gid": gid}
                 
         except Exception as e:
-            print(f"Error parsing attachment: {e}")
+            logger.debug(f"Error parsing attachment: {e}")
         
         return {"sequence": None, "timestamp_ns": None, "gid": None}
     
     def _message_handler(self, sample: zenoh.Sample):
         """Handle incoming Zenoh messages."""
         try:
-            # Parse attachment
-            attachment_data = {}
-            if sample.attachment:
-                attachment_data = self._parse_attachment(sample.attachment)
-            
             # Extract payload
             payload = bytes(sample.payload)
             
-            # For now, we'll just print the message info
-            # In a full implementation, we'd deserialize the payload
-            print(f"Received message on topic '{self.topic}':")
-            print(f"  Sequence: {attachment_data.get('sequence', 'N/A')}")
-            print(f"  Timestamp: {attachment_data.get('timestamp_ns', 'N/A')}")
-            print(f"  GID: {attachment_data.get('gid', b'N/A').hex() if attachment_data.get('gid') else 'N/A'}")
-            print(f"  Payload length: {len(payload)} bytes")
+            # Deserialize the message
+            # Check if msg_type has a deserialize() method (unified CDR types)
+            if hasattr(self.msg_type, 'deserialize') and callable(self.msg_type.deserialize):
+                # Use the message type's deserialize() method
+                msg = self.msg_type.deserialize(payload)
+            else:
+                # Fall back to the serializer for ROS 2 messages
+                msg = self.serializer.deserialize_message(payload, self.msg_type)
             
-            # Call user callback with raw data for now
-            # In a full implementation, we'd deserialize and pass the message object
-            self.callback({
-                'topic': self.topic,
-                'attachment': attachment_data,
-                'payload': payload,
-                'timestamp': time.time()
-            })
+            # Call user callback with deserialized message
+            self.callback(msg)
             
         except Exception as e:
-            print(f"Error handling message: {e}")
+            logger.error(f"Error handling message: {e}", exc_info=True)
+    
+    def spin(self):
+        """Keep the subscriber alive and processing messages."""
+        try:
+            while True:
+                time.sleep(0.1)
+        except KeyboardInterrupt:
+            pass
     
     def destroy(self):
         """Destroy the subscriber and clean up resources."""
@@ -233,7 +242,7 @@ class Subscriber:
         if self._own_session and hasattr(self, 'session'):
             self.session.close()
         
-        print(f"Subscriber for topic '{self.topic}' destroyed")
+        logger.debug(f"Subscriber for topic '{self.topic}' destroyed")
     
     def close(self):
         """Legacy method - use destroy() instead."""

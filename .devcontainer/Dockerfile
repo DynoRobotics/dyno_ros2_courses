@@ -76,7 +76,7 @@ ENV CARGO_HOME=/home/$USERNAME/.cargo \
   PATH=/home/$USERNAME/.cargo/bin:$PATH
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-  | sh -s -- -y --default-toolchain 1.84 && \
+  | sh -s -- -y --default-toolchain 1.85 && \
   rustup component add rustfmt clippy rust-analyzer
 
 # Back to root, just inherit the PATH so root can use the user’s install

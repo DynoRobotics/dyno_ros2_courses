@@ -1,0 +1,41 @@
+{
+  "name": "@ros2-zenoh/native",
+  "version": "0.1.0",
+  "description": "Native NAPI bindings for ROS 2 over Zenoh",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "napi": {
+    "name": "ros2-zenoh-native",
+    "triples": {
+      "defaults": true,
+      "additional": [
+        "x86_64-unknown-linux-gnu",
+        "aarch64-unknown-linux-gnu"
+      ]
+    }
+  },
+  "scripts": {
+    "artifacts": "napi artifacts",
+    "build": "napi build --platform --release",
+    "build:debug": "napi build --platform",
+    "prepublishOnly": "napi prepublish -t npm",
+    "test": "echo \"No tests yet\"",
+    "universal": "napi universal",
+    "version": "napi version"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^2.18.4"
+  },
+  "keywords": [
+    "ros2",
+    "zenoh",
+    "robotics",
+    "napi"
+  ],
+  "author": "ROS 2 Zenoh Team",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-repo/ros2-zenoh"
+  }
+}
