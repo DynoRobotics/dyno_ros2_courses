@@ -2,8 +2,11 @@
 Subscriber Module
 
 ROS 2-compatible subscriber using Zenoh as the transport layer.
+Supports both sync and async callbacks.
 """
 
+import asyncio
+import inspect
 import logging
 import struct
 import time
@@ -35,6 +38,17 @@ class Subscriber:
         self.topic = topic
         self.callback = callback
         self.qos_profile = qos_profile or {}
+        
+        # Detect if callback is async
+        self.is_async_callback = inspect.iscoroutinefunction(callback)
+        
+        # Store event loop reference for async callbacks
+        if self.is_async_callback:
+            try:
+                self.loop = asyncio.get_running_loop()
+            except RuntimeError:
+                # No running loop yet, will be set when we enter async context
+                self.loop = None
         
         # Use provided node or create our own session
         if node is not None:
@@ -217,8 +231,23 @@ class Subscriber:
                 # Fall back to the serializer for ROS 2 messages
                 msg = self.serializer.deserialize_message(payload, self.msg_type)
             
-            # Call user callback with deserialized message
-            self.callback(msg)
+            # Call user callback (async or sync)
+            if self.is_async_callback:
+                # Zenoh callbacks come from a different thread
+                # We need to schedule the async callback in the event loop thread
+                if self.loop is None:
+                    # Try to get the loop again
+                    try:
+                        self.loop = asyncio.get_running_loop()
+                    except RuntimeError:
+                        logger.warning("No event loop running for async callback")
+                        return
+                
+                # Schedule the coroutine in the event loop from this thread
+                asyncio.run_coroutine_threadsafe(self.callback(msg), self.loop)
+            else:
+                # Call sync callback directly
+                self.callback(msg)
             
         except Exception as e:
             logger.error(f"Error handling message: {e}", exc_info=True)
@@ -243,6 +272,10 @@ class Subscriber:
             self.session.close()
         
         logger.debug(f"Subscriber for topic '{self.topic}' destroyed")
+    
+    async def adestroy(self):
+        """Async version of destroy for use in async context managers."""
+        self.destroy()  # Cleanup is already non-blocking
     
     def close(self):
         """Legacy method - use destroy() instead."""

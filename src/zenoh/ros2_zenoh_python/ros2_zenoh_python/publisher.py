@@ -2,8 +2,10 @@
 Publisher Module
 
 ROS 2-compatible publisher using Zenoh as the transport layer.
+Async-first design with full asyncio support.
 """
 
+import asyncio
 import logging
 import os
 import struct
@@ -261,6 +263,10 @@ class Publisher:
             self.session.close()
         
         logger.debug(f"Publisher for topic '{self.topic}' destroyed")
+    
+    async def adestroy(self):
+        """Async version of destroy for use in async context managers."""
+        self.destroy()  # Cleanup is already non-blocking
     
     def close(self):
         """Legacy method - use destroy() instead."""
