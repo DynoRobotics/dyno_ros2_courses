@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+"""
+ROS2 Interface Generator CLI
+
+Generate ROS2 interface code for multiple languages and encodings.
+"""
+
+import argparse
+import sys
+from pathlib import Path
+
+# Add parent directory to path for development
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from ros2_interface_generator import generate
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Generate ROS2 interface code for multiple languages',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog='''
+Examples:
+  # Generate Python interfaces with CDR encoding (default)
+  ros2-generate-interfaces --output ros2_interfaces_py
+
+  # Generate Python with explicit language/encoding
+  ros2-generate-interfaces --lang python --encoding cdr --output ros2_interfaces_py
+  
+  # Generate Rust interfaces (future)
+  ros2-generate-interfaces --lang rust --encoding cdr --output ros2_interfaces_rs
+  
+  # Generate TypeScript interfaces (future)
+  ros2-generate-interfaces --lang typescript --encoding cdr --output ros2_interfaces_ts
+
+Supported Languages:
+  - python (ready)
+  - rust (future)
+  - typescript (future)
+  - c (future)
+
+Supported Encodings:
+  - cdr (Common Data Representation - ROS2/DDS standard)
+  - json (future)
+  - msgpack (future)
+  - protobuf (future)
+        '''
+    )
+    
+    parser.add_argument(
+        '-l', '--lang', '--language',
+        dest='language',
+        default='python',
+        choices=['python', 'rust', 'typescript', 'c'],
+        help='Target language (default: python)'
+    )
+    
+    parser.add_argument(
+        '-e', '--encoding',
+        default='cdr',
+        choices=['cdr', 'json', 'msgpack', 'protobuf'],
+        help='Serialization encoding (default: cdr)'
+    )
+    
+    parser.add_argument(
+        '-i', '--input',
+        dest='input_path',
+        default='/',
+        help='Input ROS2 workspace path (default: / for system packages)'
+    )
+    
+    parser.add_argument(
+        '-o', '--output',
+        dest='output_path',
+        required=True,
+        help='Output directory path'
+    )
+    
+    parser.add_argument(
+        '-p', '--preset',
+        choices=['essential', 'common', 'standard', 'all'],
+        help='Preset package list (essential, common, standard, all)'
+    )
+    
+    parser.add_argument(
+        '--packages',
+        nargs='+',
+        help='Specific packages to generate (space-separated)'
+    )
+    
+    parser.add_argument(
+        '--exclude',
+        nargs='+',
+        help='Packages to exclude (space-separated)'
+    )
+    
+    parser.add_argument(
+        '--version',
+        action='version',
+        version='ros2-interface-generator 0.1.0'
+    )
+    
+    args = parser.parse_args()
+    
+    # Determine package list
+    packages = None
+    if args.preset:
+        from ros2_interface_generator.package_lists import get_package_list
+        packages = get_package_list(preset=args.preset, 
+                                    include=args.packages,
+                                    exclude=args.exclude)
+    elif args.packages:
+        packages = args.packages
+    
+    try:
+        generate(
+            language=args.language,
+            encoding=args.encoding,
+            input_path=args.input_path,
+            output_path=args.output_path,
+            packages=packages
+        )
+    except KeyboardInterrupt:
+        print("\n⚠️  Generation cancelled by user")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()
+

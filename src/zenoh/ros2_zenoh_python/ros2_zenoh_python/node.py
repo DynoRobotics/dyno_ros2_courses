@@ -5,11 +5,18 @@ ROS 2-compatible node using Zenoh as the transport layer.
 Async-first design with full asyncio support.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import zenoh
-from typing import Optional, Dict, Any, Type, Callable, Union
+from typing import Optional, Dict, Any, Type, Callable, Union, TYPE_CHECKING
 from .liveliness_manager import LivelinessManager
+from .name_utils import normalize_namespace
+
+if TYPE_CHECKING:
+    from .publisher import Publisher
+    from .subscription import Subscription
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +27,8 @@ class Node:
     def __init__(self, node_name: str, 
                  zenoh_session: Optional[zenoh.Session] = None,
                  namespace: str = "",
-                 enable_rosout: bool = True):
+                 enable_rosout: bool = True,
+                 encoding: str = 'cdr'):
         """
         Initialize a ROS 2-compatible node.
         
@@ -32,9 +40,11 @@ class Node:
                           For custom configuration, create your own session and pass it in.
             namespace: ROS 2 node namespace
             enable_rosout: If True, automatically setup logging to publish to /rosout
+            encoding: Default serialization encoding ('cdr', 'json', 'msgpack'). Default: 'cdr'
         """
         self.node_name = node_name
-        self.namespace = namespace
+        self.namespace = normalize_namespace(namespace)
+        self.encoding = encoding
         
         # Use provided session or create a new one with default config
         if zenoh_session is not None:
@@ -51,9 +61,9 @@ class Node:
         # Initialize liveliness manager
         self.liveliness_manager = LivelinessManager(self.session)
         
-        # Track publishers and subscribers
+        # Track publishers and subscriptions
         self.publishers: Dict[str, Any] = {}
-        self.subscribers: Dict[str, Any] = {}
+        self.subscriptions: Dict[str, Any] = {}
         
         # Shutdown event for async lifecycle
         self._shutdown_event: Optional[asyncio.Event] = None
@@ -66,7 +76,7 @@ class Node:
         
         logger.debug(f"Node '{self.node_name}' created (owns_session={self._owns_session})")
     
-    def create_publisher(self, msg_type: Type, topic: str, qos_profile: Optional[dict] = None) -> 'Publisher':
+    def create_publisher(self, msg_type: Type, topic: str, qos_profile: Optional[dict] = None, encoding: str = None) -> Publisher:
         """
         Create a publisher for this node.
         
@@ -74,17 +84,25 @@ class Node:
             msg_type: Message type class
             topic: Topic name
             qos_profile: QoS profile settings
+            encoding: Override node's default encoding (optional)
             
         Returns:
             Publisher instance
         """
         from .publisher import Publisher
-        pub = Publisher(msg_type, topic, node=self, qos_profile=qos_profile)
+        pub = Publisher(
+            msg_type, 
+            topic, 
+            node=self, 
+            qos_profile=qos_profile,
+            encoding=encoding or self.encoding
+        )
         self.publishers[topic] = pub
+        logger.debug(f"Created publisher for topic '{topic}' (encoding: {encoding or self.encoding})")
         return pub
     
     def create_subscription(self, msg_type: Type, topic: str, callback: Callable, 
-                           qos_profile: Optional[dict] = None) -> 'Subscriber':
+                           qos_profile: Optional[dict] = None) -> Subscription:
         """
         Create a subscription for this node.
         
@@ -95,24 +113,24 @@ class Node:
             qos_profile: QoS profile settings
             
         Returns:
-            Subscriber instance
+            Subscription instance
         """
-        from .subscriber import Subscriber
-        sub = Subscriber(msg_type, topic, callback, node=self, qos_profile=qos_profile)
-        self.subscribers[topic] = sub
+        from .subscription import Subscription
+        sub = Subscription(msg_type, topic, callback, node=self, qos_profile=qos_profile)
+        self.subscriptions[topic] = sub
         return sub
     
-    def destroy_publisher(self, publisher: 'Publisher'):
+    def destroy_publisher(self, publisher: Publisher):
         """Destroy a publisher."""
         if publisher.topic in self.publishers:
             publisher.destroy()
             del self.publishers[publisher.topic]
     
-    def destroy_subscription(self, subscription: 'Subscriber'):
+    def destroy_subscription(self, subscription: Subscription):
         """Destroy a subscription."""
-        if subscription.topic in self.subscribers:
+        if subscription.topic in self.subscriptions:
             subscription.destroy()
-            del self.subscribers[subscription.topic]
+            del self.subscriptions[subscription.topic]
     
     
     def destroy_node(self):
@@ -122,10 +140,10 @@ class Node:
             pub.destroy()
         self.publishers.clear()
         
-        # Close all subscribers
-        for sub in list(self.subscribers.values()):
+        # Close all subscriptions
+        for sub in list(self.subscriptions.values()):
             sub.destroy()
-        self.subscribers.clear()
+        self.subscriptions.clear()
         
         # Only close Zenoh session if we own it
         if hasattr(self, 'session') and self._owns_session:
@@ -177,10 +195,10 @@ class Node:
             await pub.adestroy()
         self.publishers.clear()
         
-        # Close all subscribers
-        for sub in list(self.subscribers.values()):
+        # Close all subscriptions
+        for sub in list(self.subscriptions.values()):
             await sub.adestroy()
-        self.subscribers.clear()
+        self.subscriptions.clear()
         
         # Only close Zenoh session if we own it
         if hasattr(self, 'session') and self._owns_session:

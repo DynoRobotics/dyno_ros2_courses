@@ -7,7 +7,7 @@ This package enables direct Zenoh communication while maintaining ROS 2 compatib
 Main components:
 - Node: ROS 2-compatible node with async/await support
 - Publisher: ROS 2-compatible publisher using Zenoh
-- Subscriber: ROS 2-compatible subscriber using Zenoh
+- Subscription: ROS 2-compatible subscription using Zenoh
 - Bundled essential messages for out-of-the-box functionality
 - Liveliness tokens: ROS 2 metadata publishing via Zenoh liveliness tokens
 - Pythonic logging with /rosout support
@@ -34,17 +34,21 @@ Example usage:
 """
 
 from .publisher import Publisher
-from .subscriber import Subscriber
+from .subscription import Subscription
 from .node import Node
 from .liveliness_manager import LivelinessManager
 from .logger import setup_logging, RosoutHandler
+from .name_utils import resolve_topic_name, normalize_namespace, get_fqn
 
 __version__ = "0.1.0"
 __all__ = [
     "Node",
     "Publisher", 
-    "Subscriber", 
+    "Subscription", 
     "LivelinessManager",
     "setup_logging",
     "RosoutHandler",
+    "resolve_topic_name",
+    "normalize_namespace",
+    "get_fqn",
 ]

@@ -1,9 +1,11 @@
 """
-Subscriber Module
+Subscription Module
 
-ROS 2-compatible subscriber using Zenoh as the transport layer.
+ROS 2-compatible subscription using Zenoh as the transport layer.
 Supports both sync and async callbacks.
 """
+
+from __future__ import annotations
 
 import asyncio
 import inspect
@@ -14,17 +16,18 @@ import zenoh
 from typing import Any, Callable, Optional, Type
 
 from .liveliness_manager import LivelinessManager
+from .name_utils import resolve_topic_name
 
 logger = logging.getLogger(__name__)
 
 
-class Subscriber:
-    """ROS 2-compatible subscriber using Zenoh transport."""
+class Subscription:
+    """ROS 2-compatible subscription using Zenoh transport."""
     
     def __init__(self, msg_type: Type, topic: str, callback: Callable[[Any], None],
-                 node: Optional['Node'] = None, qos_profile: Optional[dict] = None):
+                 node: Optional[Node] = None, qos_profile: Optional[dict] = None, encoding: str = 'cdr'):
         """
-        Initialize a ROS 2-compatible subscriber.
+        Initialize a ROS 2-compatible subscription.
         
         Args:
             msg_type: Message type class
@@ -32,11 +35,17 @@ class Subscriber:
             callback: Callback function to handle received messages
             node: Parent node instance (if None, creates its own session)
             qos_profile: QoS profile settings
+            encoding: Deserialization encoding ('cdr', 'json', 'msgpack')
         """
         self.msg_type = msg_type
-        self.topic = topic
         self.callback = callback
         self.qos_profile = qos_profile or {}
+        self.encoding = encoding
+        
+        # Get deserializer function reference ONCE for zero overhead
+        self._deserialize = msg_type.get_deserializer(encoding)
+        
+        logger.debug(f"Subscription using {encoding} encoding")
         
         # Detect if callback is async
         self.is_async_callback = inspect.iscoroutinefunction(callback)
@@ -68,6 +77,10 @@ class Subscriber:
             self._own_session = True
             self.node = None
         
+        # Resolve topic name with namespace
+        self.topic = resolve_topic_name(topic, self.namespace)
+        logger.debug(f"Resolved topic: '{topic}' -> '{self.topic}' (namespace: '{self.namespace}')")
+        
         # Create DDS interop key for the topic
         self.dds_key = self._create_dds_interop_key()
         
@@ -96,61 +109,29 @@ class Subscriber:
     
     def _get_message_type_string(self) -> str:
         """Get the message type string for DDS interop."""
-        # Check if the message type has a DDS_TYPE_NAME constant (unified CDR types)
+        # All bundled and generated messages must have a DDS_TYPE_NAME constant
         if hasattr(self.msg_type, 'DDS_TYPE_NAME'):
             return self.msg_type.DDS_TYPE_NAME
         
-        # Fallback to common message type mappings
-        type_mappings = {
-            'geometry_msgs.msg.Twist': 'geometry_msgs::msg::dds_::Twist_',
-            'geometry_msgs.msg.Vector3': 'geometry_msgs::msg::dds_::Vector3_',
-            'builtin_interfaces.msg.Time': 'builtin_interfaces::msg::dds_::Time_',
-            'rcl_interfaces.msg.Log': 'rcl_interfaces::msg::dds_::Log_',
-        }
-        
-        # Try different ways to get the message type name
-        message_type_name = f"{self.msg_type.__module__}.{self.msg_type.__name__}"
-        
-        # Handle cases where the module name might be different
-        if 'geometry_msgs.msg._twist' in message_type_name:
-            message_type_name = 'geometry_msgs.msg.Twist'
-        elif 'geometry_msgs.msg._vector3' in message_type_name:
-            message_type_name = 'geometry_msgs.msg.Vector3'
-        elif 'builtin_interfaces.msg._time' in message_type_name:
-            message_type_name = 'builtin_interfaces.msg.Time'
-        elif 'rcl_interfaces.msg._log' in message_type_name:
-            message_type_name = 'rcl_interfaces.msg.Log'
-        
-        return type_mappings.get(message_type_name, f"{message_type_name}::dds_")
+        # If DDS_TYPE_NAME is not defined, the message type is invalid
+        raise ValueError(
+            f"Message type {self.msg_type} must have a DDS_TYPE_NAME attribute. "
+            f"Use bundled messages from _bundled_msgs or generated messages from ros2_interfaces_py. "
+            f"For custom messages, use the generator in tools/ to create proper CDR types."
+        )
     
     def _get_type_hash(self) -> str:
         """Get the type hash for the message type."""
-        # Check if the message type has a TYPE_HASH constant (unified CDR types)
+        # All bundled and generated messages must have a TYPE_HASH constant
         if hasattr(self.msg_type, 'TYPE_HASH'):
             return self.msg_type.TYPE_HASH
         
-        # Fallback to common type hashes for standard messages
-        type_hashes = {
-            'geometry_msgs.msg.Twist': 'RIHS01_9c45bf16fe0983d80e3cfe750d6835843d265a9a6c46bd2e609fcddde6fb8d2a',
-            'geometry_msgs.msg.Vector3': 'RIHS01_4a7b354a29a8a324c9f9ce904d36969a1eb5b805c515e434cbabac4562cb363d',
-            'builtin_interfaces.msg.Time': 'RIHS01_4a7b354a29a8a324c9f9ce904d36969a1eb5b805c515e434cbabac4562cb363d',
-            'rcl_interfaces.msg.Log': 'RIHS01_4a7b354a29a8a324c9f9ce904d36969a1eb5b805c515e434cbabac4562cb363d',
-        }
-        
-        # Try different ways to get the message type name
-        message_type_name = f"{self.msg_type.__module__}.{self.msg_type.__name__}"
-        
-        # Handle cases where the module name might be different
-        if 'geometry_msgs.msg._twist' in message_type_name:
-            message_type_name = 'geometry_msgs.msg.Twist'
-        elif 'geometry_msgs.msg._vector3' in message_type_name:
-            message_type_name = 'geometry_msgs.msg.Vector3'
-        elif 'builtin_interfaces.msg._time' in message_type_name:
-            message_type_name = 'builtin_interfaces.msg.Time'
-        elif 'rcl_interfaces.msg._log' in message_type_name:
-            message_type_name = 'rcl_interfaces.msg.Log'
-        
-        return type_hashes.get(message_type_name, "RIHS01_" + "0" * 64)
+        # If TYPE_HASH is not defined, the message type is invalid
+        raise ValueError(
+            f"Message type {self.msg_type} must have a TYPE_HASH attribute. "
+            f"Use bundled messages from _bundled_msgs or generated messages from ros2_interfaces_py. "
+            f"For custom messages, use the generator in tools/ to create proper CDR types."
+        )
     
     def _declare_liveliness_token(self) -> zenoh.LivelinessToken:
         """Declare liveliness token for ROS 2 metadata."""
@@ -165,16 +146,17 @@ class Subscriber:
             node_namespace=self.namespace
         )
     
-    def _parse_attachment(self, attachment, version: int = 3) -> dict:
+    def _parse_attachment(self, attachment) -> dict:
         """
-        Parse rmw_zenoh_cpp-compatible attachment.
+        Parse rmw_zenoh_cpp-compatible attachment (version 3 format).
+        
+        Format: sequence (8 bytes) + timestamp_ns (8 bytes) + VarInt(16) + gid (16 bytes)
         
         Args:
             attachment: Attachment bytes
-            version: Expected attachment version
             
         Returns:
-            Parsed attachment data
+            Dictionary with sequence, timestamp_ns, and gid
         """
         try:
             # Convert ZBytes to bytes if needed
@@ -183,29 +165,11 @@ class Subscriber:
             else:
                 attachment_bytes = bytes(attachment)
             
-            if version == 3:
-                # seq + ts + VarInt(16) + gid
-                if len(attachment_bytes) >= 25:  # 8 + 8 + 1 + 16
-                    seq, ts_ns = struct.unpack("<qq", attachment_bytes[:16])
-                    gid = attachment_bytes[17:33]  # Skip VarInt(16) byte
-                    return {"sequence": seq, "timestamp_ns": ts_ns, "gid": gid}
-            elif version == 2:
-                # seq + VarInt(16) + gid
-                if len(attachment_bytes) >= 17:  # 8 + 1 + 16
-                    seq = struct.unpack("<q", attachment_bytes[:8])[0]
-                    gid = attachment_bytes[9:25]  # Skip VarInt(16) byte
-                    return {"sequence": seq, "timestamp_ns": None, "gid": gid}
-            elif version == 1:
-                # ts + VarInt(16) + gid
-                if len(attachment_bytes) >= 17:  # 8 + 1 + 16
-                    ts_ns = struct.unpack("<q", attachment_bytes[:8])[0]
-                    gid = attachment_bytes[9:25]  # Skip VarInt(16) byte
-                    return {"sequence": None, "timestamp_ns": ts_ns, "gid": gid}
-            
-            # Fallback parsing
-            if len(attachment_bytes) >= 16:
-                gid = attachment_bytes[-16:]  # Last 16 bytes
-                return {"sequence": None, "timestamp_ns": None, "gid": gid}
+            # Version 3 format: seq + ts + VarInt(16) + gid
+            if len(attachment_bytes) >= 33:  # 8 + 8 + 1 + 16
+                seq, ts_ns = struct.unpack("<qq", attachment_bytes[:16])
+                gid = attachment_bytes[17:33]  # Skip VarInt(16) byte
+                return {"sequence": seq, "timestamp_ns": ts_ns, "gid": gid}
                 
         except Exception as e:
             logger.debug(f"Error parsing attachment: {e}")
@@ -218,8 +182,8 @@ class Subscriber:
             # Extract payload
             payload = bytes(sample.payload)
             
-            # Deserialize using the message type's built-in CDR deserialization
-            msg = self.msg_type.deserialize(payload)
+            # Deserialize using pre-bound function (zero overhead!)
+            msg = self._deserialize(payload)
             
             # Call user callback (async or sync)
             if self.is_async_callback:

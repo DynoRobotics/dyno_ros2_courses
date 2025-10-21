@@ -38,8 +38,8 @@ async def main():
     # Create a node (automatically connects to ROS2 Zenoh router at localhost:7447)
     async with Node('zenoh_subscriber') as node:
         # Create subscriber with async callback
-        sub = node.create_subscription(Twist, '/turtle1/cmd_vel', twist_callback)
-        logger.info(f"Subscribed to /turtle1/cmd_vel")
+        sub = node.create_subscription(Twist, 'cmd_vel', twist_callback)
+        logger.info(f"Subscribed to cmd_vel")
         
         # Spin forever (handles Ctrl+C automatically)
         await node.spin()

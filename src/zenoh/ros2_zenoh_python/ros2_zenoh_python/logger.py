@@ -13,6 +13,8 @@ To enable /rosout publishing, add the handler:
     logging.root.addHandler(RosoutHandler(node))
 """
 
+from __future__ import annotations
+
 import logging
 import sys
 import time
@@ -39,7 +41,7 @@ class RosoutHandler(logging.Handler):
     ERROR = 40
     FATAL = 50
     
-    def __init__(self, node: 'Node'):
+    def __init__(self, node: Node):
         """Initialize rosout handler."""
         super().__init__()
         self.node = node
@@ -113,7 +115,7 @@ class RosoutHandler(logging.Handler):
             print(f"Failed to publish to /rosout: {e}", file=sys.stderr)
 
 
-def setup_logging(node: 'Node', level: int = logging.INFO, publish_to_rosout: bool = True):
+def setup_logging(node: Node, level: int = logging.INFO, publish_to_rosout: bool = True):
     """
     Setup standard Python logging with optional /rosout publishing.
     

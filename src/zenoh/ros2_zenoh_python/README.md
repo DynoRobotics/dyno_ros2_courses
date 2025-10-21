@@ -27,7 +27,7 @@ pip install -e .
 ```
 
 The core package includes:
-- Transport layer (Node, Publisher, Subscriber)
+- Transport layer (Node, Publisher, Subscription)
 - Pythonic logging with `/rosout` support
 - **Bundled essential messages** (~10KB)
   - `geometry_msgs.msg.Twist` & `Vector3` (for examples)
@@ -340,7 +340,7 @@ pytest ros2_zenoh_python/tests/test_timing.py -v -s
 ros2_zenoh_python/
 ├── node.py              # Node class with async support
 ├── publisher.py         # Publisher implementation
-├── subscriber.py        # Subscriber with async callbacks
+├── subscription.py      # Subscription with async callbacks
 ├── liveliness_manager.py # ROS2 discovery via Zenoh liveliness
 ├── message_serializer.py # CDR serialization
 ├── logger.py            # /rosout integration
@@ -351,7 +351,7 @@ ros2_zenoh_python/
 
 ```
 Python App → Node → Publisher → Zenoh (CDR) → rmw_zenoh_cpp → ROS2 Node
-ROS2 Node → rmw_zenoh_cpp → Zenoh (CDR) → Subscriber → Node → Python App
+ROS2 Node → rmw_zenoh_cpp → Zenoh (CDR) → Subscription → Node → Python App
 ```
 
 ### Key Concepts
@@ -376,7 +376,7 @@ class Node:
     )
     
     def create_publisher(self, msg_type: Type, topic: str, qos_profile: Optional[dict] = None) -> Publisher
-    def create_subscription(self, msg_type: Type, topic: str, callback: Callable, qos_profile: Optional[dict] = None) -> Subscriber
+    def create_subscription(self, msg_type: Type, topic: str, callback: Callable, qos_profile: Optional[dict] = None) -> Subscription
     
     async def spin(self) -> None
     async def adestroy_node(self) -> None
@@ -393,10 +393,10 @@ class Publisher:
     def destroy(self) -> None
 ```
 
-### Subscriber
+### Subscription
 
 ```python
-class Subscriber:
+class Subscription:
     def destroy(self) -> None
 ```
 
@@ -433,17 +433,24 @@ asyncio.run(main())
 Standard ROS2 message types are provided in the separate `ros2_interfaces_py` package, generated from ROS2 IDL files with compatible CDR serialization and RIHS01 type hashes.
 
 **Custom Messages:**
-You can generate your own custom message types using the generator:
+You can generate your own custom message types using [`ros2_interface_generator`](../ros2_interface_generator):
 ```bash
-cd tools
-python3 generate_unified_types.py
-# Outputs to tools/unified_output/python/ros2_interfaces_py/
+# Install the generator
+cd ../ros2_interface_generator
+pip install -e .
+
+# Generate standard ROS2 messages
+ros2-generate-interfaces -l python -e cdr -o ros2_interfaces_py
+
+# Generate custom messages from your workspace
+ros2-generate-interfaces -l python -e cdr -i ~/my_ws -o my_custom_msgs_py
 ```
 
 **Package Structure:**
 ```
 ros2_zenoh_python/      # Transport library (this package)
-ros2_interfaces_py/     # Standard ROS2 messages (separate)
+ros2_interface_generator/ # Code generator (separate package)
+ros2_interfaces_py/     # Standard ROS2 messages (generated output)
 your_custom_msgs_py/    # Your custom messages (you generate)
 ```
 

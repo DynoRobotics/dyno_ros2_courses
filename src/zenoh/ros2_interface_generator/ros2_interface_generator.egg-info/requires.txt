@@ -1,0 +1,8 @@
+
+[dev]
+black
+mypy
+pytest
+
+[python]
+pycdr2

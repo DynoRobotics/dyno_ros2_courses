@@ -34,8 +34,8 @@ async def main():
     # Create a node (automatically connects to ROS2 Zenoh router at localhost:7447)
     async with Node('zenoh_publisher') as node:
         # Create publisher
-        pub = node.create_publisher(Twist, '/turtle1/cmd_vel')
-        logger.info(f"Publishing to /turtle1/cmd_vel")
+        pub = node.create_publisher(Twist, 'cmd_vel')
+        logger.info(f"Publishing to cmd_vel")
         
         # Publish messages
         count = 0
