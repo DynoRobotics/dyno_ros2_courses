@@ -8,8 +8,8 @@ import zenoh
 import sys
 from pathlib import Path
 
-# Add unified_output to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "tools" / "unified_output" / "python"))
+# Note: Tests use bundled messages from ros2_zenoh_python._bundled_msgs
+# No need to add external paths
 
 
 @pytest.fixture(scope="session")

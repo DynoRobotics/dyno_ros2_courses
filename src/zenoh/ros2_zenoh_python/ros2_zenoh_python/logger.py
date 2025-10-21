@@ -45,17 +45,16 @@ class RosoutHandler(logging.Handler):
         self.node = node
         self.rosout_publisher = None
         
-        # Only create rosout publisher if we can import the Log message
+        # Try to import Log message - first from bundled, then from full package
         try:
-            import sys
-            from pathlib import Path
-            # Add unified types to path
-            tools_dir = Path(__file__).parent.parent / "tools" / "unified_output" / "python"
-            if tools_dir.exists():
-                sys.path.insert(0, str(tools_dir))
-            
-            from ros2_interfaces_py.rcl_interfaces.msg.log import Log
-            from ros2_interfaces_py.builtin_interfaces.msg.time import Time
+            # Try bundled messages first (always available)
+            try:
+                from ._bundled_msgs.rcl_interfaces.msg.log import Log
+                from ._bundled_msgs.builtin_interfaces.msg.time import Time
+            except ImportError:
+                # Fall back to full ros2_interfaces_py package if installed
+                from ros2_interfaces_py.rcl_interfaces.msg.log import Log
+                from ros2_interfaces_py.builtin_interfaces.msg.time import Time
             
             self.Log = Log
             self.Time = Time

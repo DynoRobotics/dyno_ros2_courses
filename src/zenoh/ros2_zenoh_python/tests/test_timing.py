@@ -10,18 +10,13 @@ Tests timing characteristics including:
 
 import asyncio
 import pytest
-import sys
 import time
-from pathlib import Path
 from typing import List, Tuple
 
-# Add unified_output to path for ros2_interfaces_py
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "tools" / "unified_output" / "python"))
-
-# Import from parent package (ros2_zenoh_python)
-from .. import Node
-from ros2_interfaces_py.geometry_msgs.msg.twist import Twist
-from ros2_interfaces_py.geometry_msgs.msg.vector3 import Vector3
+# Import from package
+from ros2_zenoh_python import Node
+from ros2_zenoh_python._bundled_msgs.geometry_msgs.msg.twist import Twist
+from ros2_zenoh_python._bundled_msgs.geometry_msgs.msg.vector3 import Vector3
 
 
 async def wait_for_condition(condition_fn, timeout=2.0, check_interval=0.01):

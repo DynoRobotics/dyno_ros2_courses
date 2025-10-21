@@ -10,17 +10,12 @@ Optional tests that check:
 
 import asyncio
 import pytest
-import sys
 import zenoh
-from pathlib import Path
 
-# Add unified_output to path for ros2_interfaces_py
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "tools" / "unified_output" / "python"))
-
-# Import from parent package (ros2_zenoh_python)
-from .. import Node
-from ros2_interfaces_py.geometry_msgs.msg.twist import Twist
-from ros2_interfaces_py.geometry_msgs.msg.vector3 import Vector3
+# Import from package
+from ros2_zenoh_python import Node
+from ros2_zenoh_python._bundled_msgs.geometry_msgs.msg.twist import Twist
+from ros2_zenoh_python._bundled_msgs.geometry_msgs.msg.vector3 import Vector3
 
 # Try to import rclpy
 try:
@@ -157,8 +152,8 @@ class TestInterop:
     
     @pytest.mark.asyncio
     async def test_message_hash_compatibility(self):
-        """Test that message type hashes match ROS2."""
-        from ros2_interfaces_py.geometry_msgs.msg.twist import Twist
+        """Test that bundled message type hashes match ROS2."""
+        # Test bundled Twist message (already imported at top)
         
         # Check that TYPE_HASH is set and matches expected format
         assert hasattr(Twist, 'TYPE_HASH')
@@ -169,7 +164,7 @@ class TestInterop:
         expected_hash = 'RIHS01_9c45bf16fe0983d80e3cfe750d6835843d265a9a6c46bd2e609fcddde6fb8d2a'
         assert Twist.TYPE_HASH == expected_hash
         
-        print(f"\n✓ Twist TYPE_HASH matches ROS2: {Twist.TYPE_HASH}")
+        print(f"\n✓ Bundled Twist TYPE_HASH matches ROS2: {Twist.TYPE_HASH}")
 
 
 if __name__ == '__main__':

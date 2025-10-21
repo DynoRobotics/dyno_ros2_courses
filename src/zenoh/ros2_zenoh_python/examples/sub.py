@@ -10,13 +10,14 @@ import logging
 import sys
 from pathlib import Path
 
-# Add packages to path
-repo_root = Path(__file__).parent.parent.parent
+# Add package to path for development
+repo_root = Path(__file__).parent.parent
 sys.path.insert(0, str(repo_root))
-sys.path.insert(0, str(repo_root / "tools" / "unified_output" / "python"))
 
 from ros2_zenoh_python import Node
-from ros2_interfaces_py.geometry_msgs.msg.twist import Twist
+
+# Use bundled messages (always available with core package)
+from ros2_zenoh_python._bundled_msgs.geometry_msgs.msg.twist import Twist
 
 logger = logging.getLogger(__name__)
 
