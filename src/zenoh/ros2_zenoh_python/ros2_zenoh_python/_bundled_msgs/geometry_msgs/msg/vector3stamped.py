@@ -4,13 +4,14 @@ from typing import List, Optional, TYPE_CHECKING
 
 try:
     from pycdr2 import IdlStruct
-    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
     PYCDR2_AVAILABLE = True
 except ImportError:
     PYCDR2_AVAILABLE = False
     IdlStruct = object
     int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
     float32 = float64 = float
+    array = list  # Fallback
 
 
 # Import types from same package
@@ -22,12 +23,14 @@ from .vector3 import Vector3
 
 # Import other package modules (not individual classes to avoid circular imports)
 
-import ros2_interfaces_py.std_msgs.msg
+from ...std_msgs import msg as std_msgs_msg
 
 
 
 if TYPE_CHECKING:
     pass
+
+
 
 
 @dataclass
@@ -37,21 +40,22 @@ class Vector3Stamped(IdlStruct, typename="geometry_msgs/Vector3Stamped"):
     
     Encoding: CDR
 
-    ROS 2 type hash: RIHS01_ca02614a9821176125b6f9eb2e46948f024634e6a3af8ed158c6b3af6dc8ff67
+    ROS 2 type hash: RIHS01_d4829622288cbb443886e7ea94ea5671a3b1be6bab4ad04224432a65f7d7887a
 
 
     DDS type name: geometry_msgs::msg::dds_::Vector3Stamped_
 
     """
 
-    header: 'ros2_interfaces_py.std_msgs.msg.Header' = field(default_factory=lambda: ros2_interfaces_py.std_msgs.msg.Header())
+
+    header: std_msgs_msg.Header = field(default_factory=lambda: std_msgs_msg.Header())
 
     vector: Vector3 = field(default_factory=Vector3)
 
     
 
     # ROS2 Type Hash (RIHS01)
-    TYPE_HASH = "RIHS01_ca02614a9821176125b6f9eb2e46948f024634e6a3af8ed158c6b3af6dc8ff67"
+    TYPE_HASH = "RIHS01_d4829622288cbb443886e7ea94ea5671a3b1be6bab4ad04224432a65f7d7887a"
 
 
     # DDS Type Name
@@ -80,7 +84,7 @@ class Vector3Stamped(IdlStruct, typename="geometry_msgs/Vector3Stamped"):
         if 'header' in data:
 
             
-            kwargs['header'] = ros2_interfaces_py.std_msgs.msg.Header.from_dict(data['header'])
+            kwargs['header'] = std_msgs_msg.Header.from_dict(data['header'])
             
 
 

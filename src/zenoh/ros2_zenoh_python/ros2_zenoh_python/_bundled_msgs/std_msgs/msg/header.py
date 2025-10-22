@@ -4,24 +4,27 @@ from typing import List, Optional, TYPE_CHECKING
 
 try:
     from pycdr2 import IdlStruct
-    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
     PYCDR2_AVAILABLE = True
 except ImportError:
     PYCDR2_AVAILABLE = False
     IdlStruct = object
     int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
     float32 = float64 = float
+    array = list  # Fallback
 
 
 
 # Import other package modules (not individual classes to avoid circular imports)
 
-import ros2_interfaces_py.builtin_interfaces.msg
+from ...builtin_interfaces import msg as builtin_interfaces_msg
 
 
 
 if TYPE_CHECKING:
     pass
+
+
 
 
 @dataclass
@@ -38,7 +41,8 @@ class Header(IdlStruct, typename="std_msgs/Header"):
 
     """
 
-    stamp: 'ros2_interfaces_py.builtin_interfaces.msg.Time' = field(default_factory=lambda: ros2_interfaces_py.builtin_interfaces.msg.Time())
+
+    stamp: builtin_interfaces_msg.Time = field(default_factory=lambda: builtin_interfaces_msg.Time())
 
     frame_id: str = ""
 
@@ -74,7 +78,7 @@ class Header(IdlStruct, typename="std_msgs/Header"):
         if 'stamp' in data:
 
             
-            kwargs['stamp'] = ros2_interfaces_py.builtin_interfaces.msg.Time.from_dict(data['stamp'])
+            kwargs['stamp'] = builtin_interfaces_msg.Time.from_dict(data['stamp'])
             
 
 

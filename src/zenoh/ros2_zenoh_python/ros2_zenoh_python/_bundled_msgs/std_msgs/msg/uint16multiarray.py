@@ -4,13 +4,14 @@ from typing import List, Optional, TYPE_CHECKING
 
 try:
     from pycdr2 import IdlStruct
-    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
     PYCDR2_AVAILABLE = True
 except ImportError:
     PYCDR2_AVAILABLE = False
     IdlStruct = object
     int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
     float32 = float64 = float
+    array = list  # Fallback
 
 
 # Import types from same package
@@ -24,6 +25,8 @@ if TYPE_CHECKING:
     pass
 
 
+
+
 @dataclass
 class UInt16MultiArray(IdlStruct, typename="std_msgs/UInt16MultiArray"):
 
@@ -31,12 +34,13 @@ class UInt16MultiArray(IdlStruct, typename="std_msgs/UInt16MultiArray"):
     
     Encoding: CDR
 
-    ROS 2 type hash: RIHS01_3c129b94d1178eda41590a2c9210a8370ffbcb10094c07ff31c3359395d59de4
+    ROS 2 type hash: RIHS01_94fe73428ec63baecc774f8fb82406123e9291cf728f1b7c91caf5335129492b
 
 
     DDS type name: std_msgs::msg::dds_::UInt16MultiArray_
 
     """
+
 
     layout: MultiArrayLayout = field(default_factory=MultiArrayLayout)
 
@@ -45,7 +49,7 @@ class UInt16MultiArray(IdlStruct, typename="std_msgs/UInt16MultiArray"):
     
 
     # ROS2 Type Hash (RIHS01)
-    TYPE_HASH = "RIHS01_3c129b94d1178eda41590a2c9210a8370ffbcb10094c07ff31c3359395d59de4"
+    TYPE_HASH = "RIHS01_94fe73428ec63baecc774f8fb82406123e9291cf728f1b7c91caf5335129492b"
 
 
     # DDS Type Name

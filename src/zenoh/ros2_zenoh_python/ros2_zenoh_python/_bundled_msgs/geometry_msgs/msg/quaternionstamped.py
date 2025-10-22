@@ -4,13 +4,14 @@ from typing import List, Optional, TYPE_CHECKING
 
 try:
     from pycdr2 import IdlStruct
-    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
     PYCDR2_AVAILABLE = True
 except ImportError:
     PYCDR2_AVAILABLE = False
     IdlStruct = object
     int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
     float32 = float64 = float
+    array = list  # Fallback
 
 
 # Import types from same package
@@ -22,12 +23,14 @@ from .quaternion import Quaternion
 
 # Import other package modules (not individual classes to avoid circular imports)
 
-import ros2_interfaces_py.std_msgs.msg
+from ...std_msgs import msg as std_msgs_msg
 
 
 
 if TYPE_CHECKING:
     pass
+
+
 
 
 @dataclass
@@ -37,21 +40,22 @@ class QuaternionStamped(IdlStruct, typename="geometry_msgs/QuaternionStamped"):
     
     Encoding: CDR
 
-    ROS 2 type hash: RIHS01_3cba7593b9115e4bd97b8e3a7240a07043f439c7c24f034548453b5da7a670d5
+    ROS 2 type hash: RIHS01_381add86c6c3160644d228ca342182c7fd6c7fab11c7a85ad817a9cc22dbac6e
 
 
     DDS type name: geometry_msgs::msg::dds_::QuaternionStamped_
 
     """
 
-    header: 'ros2_interfaces_py.std_msgs.msg.Header' = field(default_factory=lambda: ros2_interfaces_py.std_msgs.msg.Header())
+
+    header: std_msgs_msg.Header = field(default_factory=lambda: std_msgs_msg.Header())
 
     quaternion: Quaternion = field(default_factory=Quaternion)
 
     
 
     # ROS2 Type Hash (RIHS01)
-    TYPE_HASH = "RIHS01_3cba7593b9115e4bd97b8e3a7240a07043f439c7c24f034548453b5da7a670d5"
+    TYPE_HASH = "RIHS01_381add86c6c3160644d228ca342182c7fd6c7fab11c7a85ad817a9cc22dbac6e"
 
 
     # DDS Type Name
@@ -80,7 +84,7 @@ class QuaternionStamped(IdlStruct, typename="geometry_msgs/QuaternionStamped"):
         if 'header' in data:
 
             
-            kwargs['header'] = ros2_interfaces_py.std_msgs.msg.Header.from_dict(data['header'])
+            kwargs['header'] = std_msgs_msg.Header.from_dict(data['header'])
             
 
 

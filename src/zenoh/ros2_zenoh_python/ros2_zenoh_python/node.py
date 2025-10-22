@@ -63,11 +63,13 @@ class Node:
         # Initialize liveliness manager
         self.liveliness_manager = LivelinessManager(self.session)
         
-        # Track publishers, subscriptions, services, and clients
+        # Track publishers, subscriptions, services, clients, action servers and action clients
         self.publishers: Dict[str, Any] = {}
         self.subscriptions: Dict[str, Any] = {}
         self.services: Dict[str, Any] = {}
         self.clients: Dict[str, Any] = {}
+        self.action_servers: Dict[str, Any] = {}
+        self.action_clients: Dict[str, Any] = {}
         
         # Shutdown event for async lifecycle
         self._shutdown_event: Optional[asyncio.Event] = None
@@ -154,6 +156,53 @@ class Node:
         logger.debug(f"Created service client for '{service_name}'")
         return client
     
+    def create_action_server(self, action_type: Type, action_name: str,
+                            execute_callback: Callable,
+                            goal_callback: Optional[Callable] = None,
+                            cancel_callback: Optional[Callable] = None):
+        """
+        Create an action server.
+        
+        Args:
+            action_type: Action type class (e.g., Fibonacci)
+            action_name: Name of the action
+            execute_callback: Async callback that executes the action
+            goal_callback: Optional callback to accept/reject goals
+            cancel_callback: Optional callback to accept/reject cancellations
+            
+        Returns:
+            ActionServer instance
+        """
+        from .action_server import ActionServer
+        action_server = ActionServer(
+            action_type,
+            action_name,
+            execute_callback,
+            node=self,
+            goal_callback=goal_callback,
+            cancel_callback=cancel_callback
+        )
+        self.action_servers[action_name] = action_server
+        logger.debug(f"Created action server for '{action_name}'")
+        return action_server
+    
+    def create_action_client(self, action_type: Type, action_name: str):
+        """
+        Create an action client.
+        
+        Args:
+            action_type: Action type class (e.g., Fibonacci)
+            action_name: Name of the action
+            
+        Returns:
+            ActionClient instance
+        """
+        from .action_client import ActionClient
+        action_client = ActionClient(action_type, action_name, node=self)
+        self.action_clients[action_name] = action_client
+        logger.debug(f"Created action client for '{action_name}'")
+        return action_client
+    
     def destroy_node(self):
         """Destroy the node and clean up all resources."""
         # Close all publishers
@@ -165,6 +214,16 @@ class Node:
         for sub in list(self.subscriptions.values()):
             sub.destroy()
         self.subscriptions.clear()
+        
+        # Close all action servers
+        for action_server in list(self.action_servers.values()):
+            action_server.destroy()
+        self.action_servers.clear()
+        
+        # Close all action clients
+        for action_client in list(self.action_clients.values()):
+            action_client.destroy()
+        self.action_clients.clear()
         
         # Only close Zenoh session if we own it
         if hasattr(self, 'session') and self._owns_session:

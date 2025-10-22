@@ -4,13 +4,14 @@ from typing import List, Optional, TYPE_CHECKING
 
 try:
     from pycdr2 import IdlStruct
-    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
     PYCDR2_AVAILABLE = True
 except ImportError:
     PYCDR2_AVAILABLE = False
     IdlStruct = object
     int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
     float32 = float64 = float
+    array = list  # Fallback
 
 
 # Import types from same package
@@ -22,12 +23,14 @@ from .point import Point
 
 # Import other package modules (not individual classes to avoid circular imports)
 
-import ros2_interfaces_py.std_msgs.msg
+from ...std_msgs import msg as std_msgs_msg
 
 
 
 if TYPE_CHECKING:
     pass
+
+
 
 
 @dataclass
@@ -37,21 +40,22 @@ class PointStamped(IdlStruct, typename="geometry_msgs/PointStamped"):
     
     Encoding: CDR
 
-    ROS 2 type hash: RIHS01_3fa5529aaadc8ba6033121d9c49564f1b4df6fb6c6d446854a127376311b22cc
+    ROS 2 type hash: RIHS01_4c0296af86e01e562e9e0405d138a01537247580076c58ea38d7923ac1045897
 
 
     DDS type name: geometry_msgs::msg::dds_::PointStamped_
 
     """
 
-    header: 'ros2_interfaces_py.std_msgs.msg.Header' = field(default_factory=lambda: ros2_interfaces_py.std_msgs.msg.Header())
+
+    header: std_msgs_msg.Header = field(default_factory=lambda: std_msgs_msg.Header())
 
     point: Point = field(default_factory=Point)
 
     
 
     # ROS2 Type Hash (RIHS01)
-    TYPE_HASH = "RIHS01_3fa5529aaadc8ba6033121d9c49564f1b4df6fb6c6d446854a127376311b22cc"
+    TYPE_HASH = "RIHS01_4c0296af86e01e562e9e0405d138a01537247580076c58ea38d7923ac1045897"
 
 
     # DDS Type Name
@@ -80,7 +84,7 @@ class PointStamped(IdlStruct, typename="geometry_msgs/PointStamped"):
         if 'header' in data:
 
             
-            kwargs['header'] = ros2_interfaces_py.std_msgs.msg.Header.from_dict(data['header'])
+            kwargs['header'] = std_msgs_msg.Header.from_dict(data['header'])
             
 
 

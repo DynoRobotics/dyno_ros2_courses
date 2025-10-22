@@ -29,12 +29,6 @@ from .empty import Empty
 from .uint64 import UInt64
 from .int64multiarray import Int64MultiArray
 from .float32 import Float32
-from .setbool_request import SetBool_Request
-from .setbool_response import SetBool_Response
-from .trigger_request import Trigger_Request
-from .trigger_response import Trigger_Response
-from .addtwoints_request import AddTwoInts_Request
-from .addtwoints_response import AddTwoInts_Response
 
 __all__ = [
     'MultiArrayDimension',
@@ -66,10 +60,4 @@ __all__ = [
     'UInt64',
     'Int64MultiArray',
     'Float32',
-    'SetBool_Request',
-    'SetBool_Response',
-    'Trigger_Request',
-    'Trigger_Response',
-    'AddTwoInts_Request',
-    'AddTwoInts_Response',
 ]

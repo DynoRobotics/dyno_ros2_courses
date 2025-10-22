@@ -4,13 +4,14 @@ from typing import List, Optional, TYPE_CHECKING
 
 try:
     from pycdr2 import IdlStruct
-    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
     PYCDR2_AVAILABLE = True
 except ImportError:
     PYCDR2_AVAILABLE = False
     IdlStruct = object
     int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
     float32 = float64 = float
+    array = list  # Fallback
 
 
 # Import types from same package
@@ -22,12 +23,14 @@ from .accelwithcovariance import AccelWithCovariance
 
 # Import other package modules (not individual classes to avoid circular imports)
 
-import ros2_interfaces_py.std_msgs.msg
+from ...std_msgs import msg as std_msgs_msg
 
 
 
 if TYPE_CHECKING:
     pass
+
+
 
 
 @dataclass
@@ -37,21 +40,22 @@ class AccelWithCovarianceStamped(IdlStruct, typename="geometry_msgs/AccelWithCov
     
     Encoding: CDR
 
-    ROS 2 type hash: RIHS01_1bd33e4621a991faada551c4f2825132bdc8b11616d6fe03223326cd1d45ad82
+    ROS 2 type hash: RIHS01_61c9ad8928e71dd95ce791b2f02809ee2a0bbcc42cd0e4047fd00a822a08e444
 
 
     DDS type name: geometry_msgs::msg::dds_::AccelWithCovarianceStamped_
 
     """
 
-    header: 'ros2_interfaces_py.std_msgs.msg.Header' = field(default_factory=lambda: ros2_interfaces_py.std_msgs.msg.Header())
+
+    header: std_msgs_msg.Header = field(default_factory=lambda: std_msgs_msg.Header())
 
     accel: AccelWithCovariance = field(default_factory=AccelWithCovariance)
 
     
 
     # ROS2 Type Hash (RIHS01)
-    TYPE_HASH = "RIHS01_1bd33e4621a991faada551c4f2825132bdc8b11616d6fe03223326cd1d45ad82"
+    TYPE_HASH = "RIHS01_61c9ad8928e71dd95ce791b2f02809ee2a0bbcc42cd0e4047fd00a822a08e444"
 
 
     # DDS Type Name
@@ -80,7 +84,7 @@ class AccelWithCovarianceStamped(IdlStruct, typename="geometry_msgs/AccelWithCov
         if 'header' in data:
 
             
-            kwargs['header'] = ros2_interfaces_py.std_msgs.msg.Header.from_dict(data['header'])
+            kwargs['header'] = std_msgs_msg.Header.from_dict(data['header'])
             
 
 

@@ -4,13 +4,14 @@ from typing import List, Optional, TYPE_CHECKING
 
 try:
     from pycdr2 import IdlStruct
-    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
     PYCDR2_AVAILABLE = True
 except ImportError:
     PYCDR2_AVAILABLE = False
     IdlStruct = object
     int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
     float32 = float64 = float
+    array = list  # Fallback
 
 
 # Import types from same package
@@ -24,6 +25,8 @@ if TYPE_CHECKING:
     pass
 
 
+
+
 @dataclass
 class Int8MultiArray(IdlStruct, typename="example_interfaces/Int8MultiArray"):
 
@@ -31,12 +34,13 @@ class Int8MultiArray(IdlStruct, typename="example_interfaces/Int8MultiArray"):
     
     Encoding: CDR
 
-    ROS 2 type hash: RIHS01_8ed5af4995b7ea1839e6a84cd4a256525b695d0c1bba2924dc066ffa4f6a3991
+    ROS 2 type hash: RIHS01_6d26932aefc0e5c0c473613376338609bac9925e3527dc4e8fab6b6783b6d680
 
 
     DDS type name: example_interfaces::msg::dds_::Int8MultiArray_
 
     """
+
 
     layout: MultiArrayLayout = field(default_factory=MultiArrayLayout)
 
@@ -45,7 +49,7 @@ class Int8MultiArray(IdlStruct, typename="example_interfaces/Int8MultiArray"):
     
 
     # ROS2 Type Hash (RIHS01)
-    TYPE_HASH = "RIHS01_8ed5af4995b7ea1839e6a84cd4a256525b695d0c1bba2924dc066ffa4f6a3991"
+    TYPE_HASH = "RIHS01_6d26932aefc0e5c0c473613376338609bac9925e3527dc4e8fab6b6783b6d680"
 
 
     # DDS Type Name

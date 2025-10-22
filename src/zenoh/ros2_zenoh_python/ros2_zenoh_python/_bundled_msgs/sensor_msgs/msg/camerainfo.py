@@ -4,13 +4,26 @@ from typing import List, Optional, TYPE_CHECKING
 
 try:
     from pycdr2 import IdlStruct
-    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
     PYCDR2_AVAILABLE = True
 except ImportError:
     PYCDR2_AVAILABLE = False
     IdlStruct = object
     int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
     float32 = float64 = float
+    array = list  # Fallback
+
+
+# Import types from same package
+
+from .regionofinterest import RegionOfInterest
+
+
+
+
+# Import other package modules (not individual classes to avoid circular imports)
+
+from ...std_msgs import msg as std_msgs_msg
 
 
 
@@ -18,32 +31,53 @@ if TYPE_CHECKING:
     pass
 
 
-@dataclass
-class Trigger_Response(IdlStruct, typename="example_interfaces/Trigger_Response"):
 
-    """example_interfaces/Trigger_Response message.
+
+@dataclass
+class CameraInfo(IdlStruct, typename="sensor_msgs/CameraInfo"):
+
+    """sensor_msgs/CameraInfo message.
     
     Encoding: CDR
 
-    ROS 2 type hash: RIHS01_3faa1e36b834f5705a7e9aa990c4720c082f0630bf28abedf315cc69f01dc8fc
+    ROS 2 type hash: RIHS01_b3dfd68ff46c9d56c80fd3bd4ed22c7a4ddce8c8348f2f59c299e73118e7e275
 
 
-    DDS type name: example_interfaces::srv::dds_::Trigger_Response_
+    DDS type name: sensor_msgs::msg::dds_::CameraInfo_
 
     """
 
-    success: bool = False
 
-    message: str = ""
+    header: std_msgs_msg.Header = field(default_factory=lambda: std_msgs_msg.Header())
+
+    height: uint32 = 0
+
+    width: uint32 = 0
+
+    distortion_model: str = ""
+
+    d: List[float64] = field(default_factory=list)
+
+    k: array[float64, 9] = field(default_factory=lambda: [0.0] * 9)
+
+    r: array[float64, 9] = field(default_factory=lambda: [0.0] * 9)
+
+    p: array[float64, 12] = field(default_factory=lambda: [0.0] * 12)
+
+    binning_x: uint32 = 0
+
+    binning_y: uint32 = 0
+
+    roi: RegionOfInterest = field(default_factory=RegionOfInterest)
 
     
 
     # ROS2 Type Hash (RIHS01)
-    TYPE_HASH = "RIHS01_3faa1e36b834f5705a7e9aa990c4720c082f0630bf28abedf315cc69f01dc8fc"
+    TYPE_HASH = "RIHS01_b3dfd68ff46c9d56c80fd3bd4ed22c7a4ddce8c8348f2f59c299e73118e7e275"
 
 
     # DDS Type Name
-    DDS_TYPE_NAME = "example_interfaces::srv::dds_::Trigger_Response_"
+    DDS_TYPE_NAME = "sensor_msgs::msg::dds_::CameraInfo_"
 
 
     def to_dict(self) -> dict:
@@ -51,11 +85,47 @@ class Trigger_Response(IdlStruct, typename="example_interfaces/Trigger_Response"
         result = {}
 
 
-        result['success'] = self.success
+        result['header'] = self.header.to_dict()
 
 
 
-        result['message'] = self.message
+        result['height'] = self.height
+
+
+
+        result['width'] = self.width
+
+
+
+        result['distortion_model'] = self.distortion_model
+
+
+
+        result['d'] = self.d
+
+
+
+        result['k'] = self.k
+
+
+
+        result['r'] = self.r
+
+
+
+        result['p'] = self.p
+
+
+
+        result['binning_x'] = self.binning_x
+
+
+
+        result['binning_y'] = self.binning_y
+
+
+
+        result['roi'] = self.roi.to_dict()
 
 
         return result
@@ -65,14 +135,63 @@ class Trigger_Response(IdlStruct, typename="example_interfaces/Trigger_Response"
         """Create from dictionary, recursively creating nested messages."""
         kwargs = {}
 
-        if 'success' in data:
+        if 'header' in data:
 
-            kwargs['success'] = data['success']
+            
+            kwargs['header'] = std_msgs_msg.Header.from_dict(data['header'])
+            
 
 
-        if 'message' in data:
+        if 'height' in data:
 
-            kwargs['message'] = data['message']
+            kwargs['height'] = data['height']
+
+
+        if 'width' in data:
+
+            kwargs['width'] = data['width']
+
+
+        if 'distortion_model' in data:
+
+            kwargs['distortion_model'] = data['distortion_model']
+
+
+        if 'd' in data:
+
+            kwargs['d'] = data['d']
+
+
+        if 'k' in data:
+
+            kwargs['k'] = data['k']
+
+
+        if 'r' in data:
+
+            kwargs['r'] = data['r']
+
+
+        if 'p' in data:
+
+            kwargs['p'] = data['p']
+
+
+        if 'binning_x' in data:
+
+            kwargs['binning_x'] = data['binning_x']
+
+
+        if 'binning_y' in data:
+
+            kwargs['binning_y'] = data['binning_y']
+
+
+        if 'roi' in data:
+
+            
+            kwargs['roi'] = RegionOfInterest.from_dict(data['roi'])
+            
 
 
         return cls(**kwargs)

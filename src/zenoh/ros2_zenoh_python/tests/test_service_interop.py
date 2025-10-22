@@ -38,19 +38,6 @@ def rclpy_context():
         yield
 
 
-@pytest.fixture(scope="session", autouse=True)
-def rclpy_session():
-    """Initialize rclpy once for the session."""
-    if HAS_RCLPY:
-        if not rclpy.ok():
-            rclpy.init()
-        yield
-        if rclpy.ok():
-            rclpy.shutdown()
-    else:
-        yield
-
-
 @pytest.mark.skipif(not HAS_RCLPY, reason="rclpy not available")
 @pytest.mark.asyncio
 async def test_zenoh_client_to_rclpy_server(rclpy_session, zenoh_session_client):
@@ -85,13 +72,13 @@ async def test_zenoh_client_to_rclpy_server(rclpy_session, zenoh_session_client)
     spin_thread = threading.Thread(target=spin_continuously, daemon=True)
     spin_thread.start()
     
-    await asyncio.sleep(1.0)
-    
     try:
         # Create Zenoh client in pytest-asyncio event loop
         async with Node('zenoh_client_v2', enable_rosout=False, zenoh_session=zenoh_session_client) as node:
             client = node.create_client(AddTwoInts, 'test_interop_add_v2')
-            await asyncio.sleep(1.0)
+            
+            # Wait for service server
+            assert await client.wait_for_server(timeout=5.0), "Service server not found"
             
             request = AddTwoInts.Request(a=99, b=1)
             response = await client.call_async(request, timeout=5.0)
@@ -195,8 +182,6 @@ async def test_multiple_zenoh_clients_to_rclpy_server_stress(rclpy_session, zeno
     
     spin_thread = threading.Thread(target=spin_continuously, daemon=True)
     spin_thread.start()
-    
-    await asyncio.sleep(1.0)
     
     try:
         # Create multiple Zenoh clients and call concurrently

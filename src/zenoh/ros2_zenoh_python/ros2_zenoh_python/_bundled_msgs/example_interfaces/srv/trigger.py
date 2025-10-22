@@ -16,18 +16,21 @@ from typing import List, Optional, TYPE_CHECKING
 
 try:
     from pycdr2 import IdlStruct
-    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
     PYCDR2_AVAILABLE = True
 except ImportError:
     PYCDR2_AVAILABLE = False
     IdlStruct = object
     int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
     float32 = float64 = float
+    array = list  # Fallback
 
 
 
 if TYPE_CHECKING:
     pass
+
+
 
 
 @dataclass
@@ -43,6 +46,7 @@ class Trigger_Request(IdlStruct, typename="example_interfaces/Trigger_Request"):
     DDS type name: example_interfaces::srv::dds_::Trigger_Request_
 
     """
+
 
     
 
@@ -151,18 +155,21 @@ from typing import List, Optional, TYPE_CHECKING
 
 try:
     from pycdr2 import IdlStruct
-    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
     PYCDR2_AVAILABLE = True
 except ImportError:
     PYCDR2_AVAILABLE = False
     IdlStruct = object
     int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
     float32 = float64 = float
+    array = list  # Fallback
 
 
 
 if TYPE_CHECKING:
     pass
+
+
 
 
 @dataclass
@@ -178,6 +185,7 @@ class Trigger_Response(IdlStruct, typename="example_interfaces/Trigger_Response"
     DDS type name: example_interfaces::srv::dds_::Trigger_Response_
 
     """
+
 
     success: bool = False
 

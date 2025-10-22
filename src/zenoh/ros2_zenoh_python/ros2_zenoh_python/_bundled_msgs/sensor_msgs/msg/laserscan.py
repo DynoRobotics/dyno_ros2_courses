@@ -4,13 +4,20 @@ from typing import List, Optional, TYPE_CHECKING
 
 try:
     from pycdr2 import IdlStruct
-    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
     PYCDR2_AVAILABLE = True
 except ImportError:
     PYCDR2_AVAILABLE = False
     IdlStruct = object
     int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
     float32 = float64 = float
+    array = list  # Fallback
+
+
+
+# Import other package modules (not individual classes to avoid circular imports)
+
+from ...std_msgs import msg as std_msgs_msg
 
 
 
@@ -18,30 +25,51 @@ if TYPE_CHECKING:
     pass
 
 
-@dataclass
-class SetBool_Request(IdlStruct, typename="example_interfaces/SetBool_Request"):
 
-    """example_interfaces/SetBool_Request message.
+
+@dataclass
+class LaserScan(IdlStruct, typename="sensor_msgs/LaserScan"):
+
+    """sensor_msgs/LaserScan message.
     
     Encoding: CDR
 
-    ROS 2 type hash: RIHS01_db31a9146de9f58c3196ef92ebc43abc460199adfa57ece51550f37544c4ee58
+    ROS 2 type hash: RIHS01_64c191398013af96509d518dac71d5164f9382553fce5c1f8cca5be7924bd828
 
 
-    DDS type name: example_interfaces::srv::dds_::SetBool_Request_
+    DDS type name: sensor_msgs::msg::dds_::LaserScan_
 
     """
 
-    data: bool = False
+
+    header: std_msgs_msg.Header = field(default_factory=lambda: std_msgs_msg.Header())
+
+    angle_min: float32 = 0.0
+
+    angle_max: float32 = 0.0
+
+    angle_increment: float32 = 0.0
+
+    time_increment: float32 = 0.0
+
+    scan_time: float32 = 0.0
+
+    range_min: float32 = 0.0
+
+    range_max: float32 = 0.0
+
+    ranges: List[float32] = field(default_factory=list)
+
+    intensities: List[float32] = field(default_factory=list)
 
     
 
     # ROS2 Type Hash (RIHS01)
-    TYPE_HASH = "RIHS01_db31a9146de9f58c3196ef92ebc43abc460199adfa57ece51550f37544c4ee58"
+    TYPE_HASH = "RIHS01_64c191398013af96509d518dac71d5164f9382553fce5c1f8cca5be7924bd828"
 
 
     # DDS Type Name
-    DDS_TYPE_NAME = "example_interfaces::srv::dds_::SetBool_Request_"
+    DDS_TYPE_NAME = "sensor_msgs::msg::dds_::LaserScan_"
 
 
     def to_dict(self) -> dict:
@@ -49,7 +77,43 @@ class SetBool_Request(IdlStruct, typename="example_interfaces/SetBool_Request"):
         result = {}
 
 
-        result['data'] = self.data
+        result['header'] = self.header.to_dict()
+
+
+
+        result['angle_min'] = self.angle_min
+
+
+
+        result['angle_max'] = self.angle_max
+
+
+
+        result['angle_increment'] = self.angle_increment
+
+
+
+        result['time_increment'] = self.time_increment
+
+
+
+        result['scan_time'] = self.scan_time
+
+
+
+        result['range_min'] = self.range_min
+
+
+
+        result['range_max'] = self.range_max
+
+
+
+        result['ranges'] = self.ranges
+
+
+
+        result['intensities'] = self.intensities
 
 
         return result
@@ -59,9 +123,56 @@ class SetBool_Request(IdlStruct, typename="example_interfaces/SetBool_Request"):
         """Create from dictionary, recursively creating nested messages."""
         kwargs = {}
 
-        if 'data' in data:
+        if 'header' in data:
 
-            kwargs['data'] = data['data']
+            
+            kwargs['header'] = std_msgs_msg.Header.from_dict(data['header'])
+            
+
+
+        if 'angle_min' in data:
+
+            kwargs['angle_min'] = data['angle_min']
+
+
+        if 'angle_max' in data:
+
+            kwargs['angle_max'] = data['angle_max']
+
+
+        if 'angle_increment' in data:
+
+            kwargs['angle_increment'] = data['angle_increment']
+
+
+        if 'time_increment' in data:
+
+            kwargs['time_increment'] = data['time_increment']
+
+
+        if 'scan_time' in data:
+
+            kwargs['scan_time'] = data['scan_time']
+
+
+        if 'range_min' in data:
+
+            kwargs['range_min'] = data['range_min']
+
+
+        if 'range_max' in data:
+
+            kwargs['range_max'] = data['range_max']
+
+
+        if 'ranges' in data:
+
+            kwargs['ranges'] = data['ranges']
+
+
+        if 'intensities' in data:
+
+            kwargs['intensities'] = data['intensities']
 
 
         return cls(**kwargs)

@@ -4,13 +4,14 @@ from typing import List, Optional, TYPE_CHECKING
 
 try:
     from pycdr2 import IdlStruct
-    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
     PYCDR2_AVAILABLE = True
 except ImportError:
     PYCDR2_AVAILABLE = False
     IdlStruct = object
     int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
     float32 = float64 = float
+    array = list  # Fallback
 
 
 # Import types from same package
@@ -24,6 +25,8 @@ if TYPE_CHECKING:
     pass
 
 
+
+
 @dataclass
 class PoseWithCovariance(IdlStruct, typename="geometry_msgs/PoseWithCovariance"):
 
@@ -31,21 +34,22 @@ class PoseWithCovariance(IdlStruct, typename="geometry_msgs/PoseWithCovariance")
     
     Encoding: CDR
 
-    ROS 2 type hash: RIHS01_b2850c34aa1ead75c1da702ff6e0dff68d509e06ca6e192d4c5c246ab18cac98
+    ROS 2 type hash: RIHS01_9a7c0fd234b7f45c6098745ecccd773ca1085670e64107135397aee31c02e1bb
 
 
     DDS type name: geometry_msgs::msg::dds_::PoseWithCovariance_
 
     """
 
+
     pose: Pose = field(default_factory=Pose)
 
-    covariance: List[float64] = field(default_factory=list)
+    covariance: array[float64, 36] = field(default_factory=lambda: [0.0] * 36)
 
     
 
     # ROS2 Type Hash (RIHS01)
-    TYPE_HASH = "RIHS01_b2850c34aa1ead75c1da702ff6e0dff68d509e06ca6e192d4c5c246ab18cac98"
+    TYPE_HASH = "RIHS01_9a7c0fd234b7f45c6098745ecccd773ca1085670e64107135397aee31c02e1bb"
 
 
     # DDS Type Name

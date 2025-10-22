@@ -1,0 +1,19 @@
+from setuptools import setup, find_packages
+
+setup(
+    name="ros2-interfaces-py",
+    version="0.1.0",
+    description="CDR-serializable ROS 2 interfaces for Python (no ROS 2 dependency)",
+    packages=find_packages(),
+    python_requires=">=3.8",
+    install_requires=[
+        "pycdr2>=0.2.0",  # CDR serialization support
+    ],
+    extras_require={
+        "dev": ["pytest>=7.0"],
+    },
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: Apache Software License",
+    ],
+)

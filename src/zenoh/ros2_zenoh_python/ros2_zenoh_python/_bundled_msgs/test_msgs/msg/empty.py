@@ -4,13 +4,14 @@ from typing import List, Optional, TYPE_CHECKING
 
 try:
     from pycdr2 import IdlStruct
-    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
     PYCDR2_AVAILABLE = True
 except ImportError:
     PYCDR2_AVAILABLE = False
     IdlStruct = object
     int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
     float32 = float64 = float
+    array = list  # Fallback
 
 
 
@@ -18,28 +19,31 @@ if TYPE_CHECKING:
     pass
 
 
-@dataclass
-class Trigger_Request(IdlStruct, typename="example_interfaces/Trigger_Request"):
 
-    """example_interfaces/Trigger_Request message.
+
+@dataclass
+class Empty(IdlStruct, typename="test_msgs/Empty"):
+
+    """test_msgs/Empty message.
     
     Encoding: CDR
 
-    ROS 2 type hash: RIHS01_fe74bbfc1587cea4fae7d3ec3b0e639a5f96dd42a627b65e4479155c34844d20
+    ROS 2 type hash: RIHS01_93978aa659ae9806af059355310290937f9eec018e6305d69f096bc03dc29349
 
 
-    DDS type name: example_interfaces::srv::dds_::Trigger_Request_
+    DDS type name: test_msgs::msg::dds_::Empty_
 
     """
+
 
     
 
     # ROS2 Type Hash (RIHS01)
-    TYPE_HASH = "RIHS01_fe74bbfc1587cea4fae7d3ec3b0e639a5f96dd42a627b65e4479155c34844d20"
+    TYPE_HASH = "RIHS01_93978aa659ae9806af059355310290937f9eec018e6305d69f096bc03dc29349"
 
 
     # DDS Type Name
-    DDS_TYPE_NAME = "example_interfaces::srv::dds_::Trigger_Request_"
+    DDS_TYPE_NAME = "test_msgs::msg::dds_::Empty_"
 
 
     def to_dict(self) -> dict:

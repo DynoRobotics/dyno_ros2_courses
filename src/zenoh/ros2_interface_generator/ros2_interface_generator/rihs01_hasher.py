@@ -78,7 +78,7 @@ class RIHS01Hasher:
         # Calculate hash
         return self._calculate_type_hash(full_description)
     
-    def calculate_service_hash(self, package: str, name: str, request_msg, response_msg) -> str:
+    def calculate_service_hash(self, package: str, name: str, request_msg, response_msg, namespace: str = 'srv') -> str:
         """
         Calculate RIHS01 hash for a service type.
         
@@ -90,6 +90,7 @@ class RIHS01Hasher:
             name: Service name (e.g., 'AddTwoInts')
             request_msg: MessageInfo for the Request
             response_msg: MessageInfo for the Response
+            namespace: Type namespace ('srv' for regular services, 'action' for action services)
             
         Returns:
             RIHS01 hash string for the service
@@ -97,7 +98,7 @@ class RIHS01Hasher:
         # Build service type description
         # Services reference Request, Response, and Event message types
         service_type = {
-            'type_name': f"{package}/srv/{name}",
+            'type_name': f"{package}/{namespace}/{name}",
             'fields': [
                 {
                     'name': 'request_message',
@@ -105,7 +106,7 @@ class RIHS01Hasher:
                         'type_id': 1,  # Nested type
                         'capacity': 0,
                         'string_capacity': 0,
-                        'nested_type_name': f"{package}/srv/{name}_Request"
+                        'nested_type_name': f"{package}/{namespace}/{name}_Request"
                     },
                     'default_value': ''
                 },
@@ -115,7 +116,7 @@ class RIHS01Hasher:
                         'type_id': 1,  # Nested type
                         'capacity': 0,
                         'string_capacity': 0,
-                        'nested_type_name': f"{package}/srv/{name}_Response"
+                        'nested_type_name': f"{package}/{namespace}/{name}_Response"
                     },
                     'default_value': ''
                 },
@@ -125,7 +126,7 @@ class RIHS01Hasher:
                         'type_id': 1,  # Nested type
                         'capacity': 0,
                         'string_capacity': 0,
-                        'nested_type_name': f"{package}/srv/{name}_Event"
+                        'nested_type_name': f"{package}/{namespace}/{name}_Event"
                     },
                     'default_value': ''
                 }
@@ -136,18 +137,18 @@ class RIHS01Hasher:
         referenced_types = {}
         
         # Add Request type
-        request_type_name = f"{package}/srv/{name}_Request"
+        request_type_name = f"{package}/{namespace}/{name}_Request"
         referenced_types[request_type_name] = self._serialize_type(request_msg, request_type_name)
         self._collect_references(request_msg, referenced_types)
         
         # Add Response type  
-        response_type_name = f"{package}/srv/{name}_Response"
+        response_type_name = f"{package}/{namespace}/{name}_Response"
         referenced_types[response_type_name] = self._serialize_type(response_msg, response_type_name)
         self._collect_references(response_msg, referenced_types)
         
         # Add Event type (auto-generated for all services)
         # Event has 3 fields: info (ServiceEventInfo), request (bounded sequence[1]), response (bounded sequence[1])
-        event_type_name = f"{package}/srv/{name}_Event"
+        event_type_name = f"{package}/{namespace}/{name}_Event"
         referenced_types[event_type_name] = {
             'type_name': event_type_name,
             'fields': [
@@ -217,6 +218,100 @@ class RIHS01Hasher:
         
         return self._calculate_type_hash(full_description)
     
+    def calculate_action_hash(self, package: str, name: str, goal_msg, result_msg, feedback_msg) -> str:
+        """
+        Calculate RIHS01 hash for an action type.
+        
+        Actions have their own type description that references Goal, Result, and Feedback types.
+        Per ROS2 standard, actions have 3 members: goal, result, feedback
+        
+        Args:
+            package: Package name (e.g., 'example_interfaces')
+            name: Action name (e.g., 'Fibonacci')
+            goal_msg: MessageInfo for the Goal
+            result_msg: MessageInfo for the Result
+            feedback_msg: MessageInfo for the Feedback
+            
+        Returns:
+            RIHS01 hash string for the action
+        """
+        # Temporarily add action types to type_lookup so _collect_references can find them
+        goal_type_name = f"{package}/action/{name}_Goal"
+        result_type_name = f"{package}/action/{name}_Result"
+        feedback_type_name = f"{package}/action/{name}_Feedback"
+        
+        old_lookup = self.type_lookup.copy()
+        self.type_lookup[goal_type_name] = goal_msg
+        self.type_lookup[result_type_name] = result_msg
+        self.type_lookup[feedback_type_name] = feedback_msg
+        
+        try:
+            # Build action type description
+            # Actions reference Goal, Result, and Feedback message types
+            action_type = {
+                'type_name': f"{package}/action/{name}",
+                'fields': [
+                    {
+                        'name': 'goal',
+                        'type': {
+                            'type_id': 1,  # Nested type
+                            'capacity': 0,
+                            'string_capacity': 0,
+                            'nested_type_name': goal_type_name
+                        },
+                        'default_value': ''
+                    },
+                    {
+                        'name': 'result',
+                        'type': {
+                            'type_id': 1,  # Nested type
+                            'capacity': 0,
+                            'string_capacity': 0,
+                            'nested_type_name': result_type_name
+                        },
+                        'default_value': ''
+                    },
+                    {
+                        'name': 'feedback',
+                        'type': {
+                            'type_id': 1,  # Nested type
+                            'capacity': 0,
+                            'string_capacity': 0,
+                            'nested_type_name': feedback_type_name
+                        },
+                        'default_value': ''
+                    }
+                ]
+            }
+            
+            # Collect referenced types (Goal, Result, Feedback, and their dependencies)
+            referenced_types = {}
+            
+            # Add Goal type
+            referenced_types[goal_type_name] = self._serialize_type(goal_msg, goal_type_name)
+            self._collect_references(goal_msg, referenced_types)
+            
+            # Add Result type
+            referenced_types[result_type_name] = self._serialize_type(result_msg, result_type_name)
+            self._collect_references(result_msg, referenced_types)
+            
+            # Add Feedback type
+            referenced_types[feedback_type_name] = self._serialize_type(feedback_msg, feedback_type_name)
+            self._collect_references(feedback_msg, referenced_types)
+            
+            # Sort referenced types alphabetically by type_name (as ROS2 does)
+            sorted_refs = sorted(referenced_types.values(), key=lambda x: x['type_name'])
+            
+            full_description = {
+                'type_description': action_type,
+                'referenced_type_descriptions': sorted_refs
+            }
+            
+            return self._calculate_type_hash(full_description)
+        finally:
+            # Restore original type_lookup
+            self.type_lookup = old_lookup
+    
     def _build_full_type_description(self, package: str, name: str, namespace: str = 'msg') -> Dict:
         """Build complete type description including all referenced types."""
         type_name = f"{package}/{namespace}/{name}"
@@ -233,9 +328,12 @@ class RIHS01Hasher:
         referenced_types = {}
         self._collect_references(msg_info, referenced_types)
         
+        # Sort referenced types alphabetically by type_name (as ROS2 does)
+        sorted_refs = sorted(referenced_types.values(), key=lambda x: x['type_name'])
+        
         return {
             'type_description': main_type,
-            'referenced_type_descriptions': list(referenced_types.values())
+            'referenced_type_descriptions': sorted_refs
         }
     
     def _serialize_type(self, msg_info, type_name: str) -> Dict:
@@ -263,15 +361,24 @@ class RIHS01Hasher:
             nested_type_name = ''
         else:
             type_id = FIELD_TYPE_IDS['__nested__']
-            # Format: package/msg/Type
-            nested_type_name = f"{field.ros2_package}/msg/{field.type}"
+            # Format: package/namespace/Type (namespace can be msg, srv, or action)
+            namespace = getattr(field, 'namespace', 'msg')
+            nested_type_name = f"{field.ros2_package}/{namespace}/{field.type}"
         
-        # Handle arrays
+        # Handle arrays/sequences (ROS2 type hash spec)
         if field.is_array:
             if type_id != FIELD_TYPE_IDS['__nested__']:
-                type_id += 48  # Array offset (e.g., int32=6 -> int32_array=54)
+                # Correct offsets: bounded=+48, unbounded=+144
+                if field.is_bounded_array:
+                    type_id += 48  # Bounded array
+                else:
+                    type_id += 144  # Unbounded sequence
             else:
-                type_id = 49  # NESTED_TYPE_ARRAY
+                # Nested type arrays: base (1) + array offset
+                if field.is_bounded_array:
+                    type_id = 49  # BOUNDED_NESTED_TYPE_ARRAY (1 + 48)
+                else:
+                    type_id = 145  # UNBOUNDED_NESTED_TYPE_ARRAY (1 + 144)
         
         return {
             'type_id': type_id,
@@ -284,15 +391,21 @@ class RIHS01Hasher:
         """Recursively collect all referenced message types."""
         for field in msg_info.fields:
             if not field.is_builtin:
-                ref_type_name = f"{field.ros2_package}/msg/{field.type}"
+                namespace = getattr(field, 'namespace', 'msg')
+                ref_type_name = f"{field.ros2_package}/{namespace}/{field.type}"
                 
                 if ref_type_name not in referenced_types:
-                    # Get the referenced message
-                    if field.ros2_package in self.all_messages:
+                    # Try to get the referenced message from type_lookup first (for action types)
+                    if ref_type_name in self.type_lookup:
+                        ref_msg = self.type_lookup[ref_type_name]
+                        referenced_types[ref_type_name] = self._serialize_type(ref_msg, ref_type_name)
+                        # Recursively collect its references
+                        self._collect_references(ref_msg, referenced_types)
+                    # Otherwise try all_messages (for regular msg types)
+                    elif field.ros2_package in self.all_messages:
                         if field.type in self.all_messages[field.ros2_package]:
                             ref_msg = self.all_messages[field.ros2_package][field.type]
                             referenced_types[ref_type_name] = self._serialize_type(ref_msg, ref_type_name)
-                            
                             # Recursively collect its references
                             self._collect_references(ref_msg, referenced_types)
     

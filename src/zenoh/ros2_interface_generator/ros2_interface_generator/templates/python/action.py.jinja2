@@ -1,0 +1,160 @@
+"""
+{{ action.name }} action type.
+
+Auto-generated from {{ action.package }}/action/{{ action.name }}.action
+"""
+
+from dataclasses import dataclass, field
+from typing import List, Optional, TYPE_CHECKING
+
+{% if encoding_name == 'cdr' %}
+try:
+    from pycdr2 import IdlStruct
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
+    PYCDR2_AVAILABLE = True
+except ImportError:
+    PYCDR2_AVAILABLE = False
+    IdlStruct = object
+    int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
+    float32 = float64 = float
+    array = list  # Fallback
+{%- elif encoding_name == 'json' %}
+import json
+{%- endif %}
+{% if imports_other_pkg_types %}
+
+# Import specific types from sibling packages (import actual classes, not modules)
+{% for pkg, types in imports_other_pkg_types.items() %}
+{% for type_name in types|sort %}
+from ...{{ pkg }}.msg.{{ type_name.lower() }} import {{ type_name }}
+{% endfor %}
+{% endfor %}
+{% endif %}
+{% if imports_same_pkg %}
+
+# Import same-package message types
+{% for import_path, type_name in imports_same_pkg %}
+from {{ import_path }} import {{ type_name }}
+{% endfor %}
+{% endif %}
+
+if TYPE_CHECKING:
+    pass
+
+
+# ============================================================================
+# Goal Message
+# ============================================================================
+{%- set message=action.goal -%}
+{%- set dds_type_name=goal_dds_type_name -%}
+{%- set needs_type_hash=True -%}
+{%- set needs_dds_type_name=True -%}
+{% include "message_body.py.jinja2" %}
+
+
+# ============================================================================
+# Result Message
+# ============================================================================
+{%- set message=action.result -%}
+{%- set dds_type_name=result_dds_type_name -%}
+{%- set needs_type_hash=True -%}
+{%- set needs_dds_type_name=True -%}
+{% include "message_body.py.jinja2" %}
+
+
+# ============================================================================
+# Feedback Message
+# ============================================================================
+{%- set message=action.feedback -%}
+{%- set dds_type_name=feedback_dds_type_name -%}
+{%- set needs_type_hash=True -%}
+{%- set needs_dds_type_name=True -%}
+{% include "message_body.py.jinja2" %}
+
+
+# ============================================================================
+# FeedbackMessage (with GoalInfo)
+# ============================================================================
+{%- set message=action.feedback_message -%}
+{%- set dds_type_name=feedback_message_dds_type_name -%}
+{%- set needs_type_hash=True -%}
+{%- set needs_dds_type_name=True -%}
+{% include "message_body.py.jinja2" %}
+
+
+# ============================================================================
+# SendGoal Service
+# ============================================================================
+{%- set message=action.send_goal_service.request -%}
+{%- set dds_type_name=send_goal_request_dds_type_name -%}
+{%- set needs_type_hash=True -%}
+{%- set needs_dds_type_name=True -%}
+{% include "message_body.py.jinja2" %}
+
+{%- set message=action.send_goal_service.response -%}
+{%- set dds_type_name=send_goal_response_dds_type_name -%}
+{%- set needs_type_hash=True -%}
+{%- set needs_dds_type_name=True -%}
+{% include "message_body.py.jinja2" %}
+
+
+class {{ action.send_goal_service.name }}:
+    """SendGoal service for {{ action.name }} action."""
+    Request = {{ action.send_goal_service.request.name }}
+    Response = {{ action.send_goal_service.response.name }}
+    TYPE_HASH = "{{ send_goal_service_type_hash }}"
+
+
+# ============================================================================
+# GetResult Service
+# ============================================================================
+{%- set message=action.get_result_service.request -%}
+{%- set dds_type_name=get_result_request_dds_type_name -%}
+{%- set needs_type_hash=True -%}
+{%- set needs_dds_type_name=True -%}
+{% include "message_body.py.jinja2" %}
+
+{%- set message=action.get_result_service.response -%}
+{%- set dds_type_name=get_result_response_dds_type_name -%}
+{%- set needs_type_hash=True -%}
+{%- set needs_dds_type_name=True -%}
+{% include "message_body.py.jinja2" %}
+
+
+class {{ action.get_result_service.name }}:
+    """GetResult service for {{ action.name }} action."""
+    Request = {{ action.get_result_service.request.name }}
+    Response = {{ action.get_result_service.response.name }}
+    TYPE_HASH = "{{ get_result_service_type_hash }}"
+
+
+class {{ action.name }}:
+    """
+    Action type for {{ action.package }}/{{ action.name }}.
+    
+    Goal: {{ action.goal.name }}
+    Result: {{ action.result.name }}
+    Feedback: {{ action.feedback.name }}
+    """
+    # Main action types
+    Goal = {{ action.goal.name }}
+    Result = {{ action.result.name }}
+    Feedback = {{ action.feedback.name }}
+    
+    # Generated types for action protocol
+    FeedbackMessage = {{ action.feedback_message.name }}
+    SendGoal = {{ action.send_goal_service.name }}
+    GetResult = {{ action.get_result_service.name }}
+    
+    # Action type hash (computed from Goal + Result + Feedback)
+    TYPE_HASH = "{{ action_type_hash }}"
+    
+    def __init__(self):
+        """Actions are not meant to be instantiated directly."""
+        raise TypeError("Action types are not meant to be instantiated. "
+                        "Use {{ action.name }}.Goal, {{ action.name }}.Result, {{ action.name }}.Feedback instead.")
+
+
+__all__ = ['{{ action.name }}']
+
+

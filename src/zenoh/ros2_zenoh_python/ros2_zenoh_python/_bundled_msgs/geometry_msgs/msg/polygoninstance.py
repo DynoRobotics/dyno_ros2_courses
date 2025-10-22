@@ -4,13 +4,14 @@ from typing import List, Optional, TYPE_CHECKING
 
 try:
     from pycdr2 import IdlStruct
-    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
     PYCDR2_AVAILABLE = True
 except ImportError:
     PYCDR2_AVAILABLE = False
     IdlStruct = object
     int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
     float32 = float64 = float
+    array = list  # Fallback
 
 
 # Import types from same package
@@ -24,6 +25,8 @@ if TYPE_CHECKING:
     pass
 
 
+
+
 @dataclass
 class PolygonInstance(IdlStruct, typename="geometry_msgs/PolygonInstance"):
 
@@ -31,12 +34,13 @@ class PolygonInstance(IdlStruct, typename="geometry_msgs/PolygonInstance"):
     
     Encoding: CDR
 
-    ROS 2 type hash: RIHS01_9e5265ee11f7c6593ad1cffa3974e7704cbe77e8ce4bbaa13707bcb509dcda3f
+    ROS 2 type hash: RIHS01_fa1cb3dc774329865258afef74f65b0553d487510c6d0f93ba38cc32d62ac0e5
 
 
     DDS type name: geometry_msgs::msg::dds_::PolygonInstance_
 
     """
+
 
     polygon: Polygon = field(default_factory=Polygon)
 
@@ -45,7 +49,7 @@ class PolygonInstance(IdlStruct, typename="geometry_msgs/PolygonInstance"):
     
 
     # ROS2 Type Hash (RIHS01)
-    TYPE_HASH = "RIHS01_9e5265ee11f7c6593ad1cffa3974e7704cbe77e8ce4bbaa13707bcb509dcda3f"
+    TYPE_HASH = "RIHS01_fa1cb3dc774329865258afef74f65b0553d487510c6d0f93ba38cc32d62ac0e5"
 
 
     # DDS Type Name

@@ -4,13 +4,20 @@ from typing import List, Optional, TYPE_CHECKING
 
 try:
     from pycdr2 import IdlStruct
-    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
     PYCDR2_AVAILABLE = True
 except ImportError:
     PYCDR2_AVAILABLE = False
     IdlStruct = object
     int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
     float32 = float64 = float
+    array = list  # Fallback
+
+
+
+# Import other package modules (not individual classes to avoid circular imports)
+
+from ...std_msgs import msg as std_msgs_msg
 
 
 
@@ -18,32 +25,37 @@ if TYPE_CHECKING:
     pass
 
 
-@dataclass
-class SetBool_Response(IdlStruct, typename="example_interfaces/SetBool_Response"):
 
-    """example_interfaces/SetBool_Response message.
+
+@dataclass
+class CompressedImage(IdlStruct, typename="sensor_msgs/CompressedImage"):
+
+    """sensor_msgs/CompressedImage message.
     
     Encoding: CDR
 
-    ROS 2 type hash: RIHS01_fd35d6974b0ede7fad127f600619719eb7caf8b0ff8b02a4a5a103900479a619
+    ROS 2 type hash: RIHS01_15640771531571185e2efc8a100baf923961a4d15d5569652e6cb6691e8e371a
 
 
-    DDS type name: example_interfaces::srv::dds_::SetBool_Response_
+    DDS type name: sensor_msgs::msg::dds_::CompressedImage_
 
     """
 
-    success: bool = False
 
-    message: str = ""
+    header: std_msgs_msg.Header = field(default_factory=lambda: std_msgs_msg.Header())
+
+    format: str = ""
+
+    data: List[uint8] = field(default_factory=list)
 
     
 
     # ROS2 Type Hash (RIHS01)
-    TYPE_HASH = "RIHS01_fd35d6974b0ede7fad127f600619719eb7caf8b0ff8b02a4a5a103900479a619"
+    TYPE_HASH = "RIHS01_15640771531571185e2efc8a100baf923961a4d15d5569652e6cb6691e8e371a"
 
 
     # DDS Type Name
-    DDS_TYPE_NAME = "example_interfaces::srv::dds_::SetBool_Response_"
+    DDS_TYPE_NAME = "sensor_msgs::msg::dds_::CompressedImage_"
 
 
     def to_dict(self) -> dict:
@@ -51,11 +63,15 @@ class SetBool_Response(IdlStruct, typename="example_interfaces/SetBool_Response"
         result = {}
 
 
-        result['success'] = self.success
+        result['header'] = self.header.to_dict()
 
 
 
-        result['message'] = self.message
+        result['format'] = self.format
+
+
+
+        result['data'] = self.data
 
 
         return result
@@ -65,14 +81,21 @@ class SetBool_Response(IdlStruct, typename="example_interfaces/SetBool_Response"
         """Create from dictionary, recursively creating nested messages."""
         kwargs = {}
 
-        if 'success' in data:
+        if 'header' in data:
 
-            kwargs['success'] = data['success']
+            
+            kwargs['header'] = std_msgs_msg.Header.from_dict(data['header'])
+            
 
 
-        if 'message' in data:
+        if 'format' in data:
 
-            kwargs['message'] = data['message']
+            kwargs['format'] = data['format']
+
+
+        if 'data' in data:
+
+            kwargs['data'] = data['data']
 
 
         return cls(**kwargs)

@@ -38,6 +38,8 @@ from .subscription import Subscription
 from .service import Service
 from .client import Client
 from .node import Node
+from .action_server import ActionServer, GoalHandle, GoalStatus, GoalResponse, CancelResponse
+from .action_client import ActionClient, ClientGoalHandle
 from .liveliness_manager import LivelinessManager
 from .logger import setup_logging, RosoutHandler
 from .name_utils import resolve_topic_name, normalize_namespace, get_fqn
@@ -49,6 +51,13 @@ __all__ = [
     "Subscription",
     "Service",
     "Client",
+    "ActionServer",
+    "ActionClient",
+    "GoalHandle",
+    "ClientGoalHandle",
+    "GoalStatus",
+    "GoalResponse",
+    "CancelResponse",
     "LivelinessManager",
     "setup_logging",
     "RosoutHandler",

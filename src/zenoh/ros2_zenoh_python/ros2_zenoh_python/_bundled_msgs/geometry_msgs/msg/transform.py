@@ -4,13 +4,14 @@ from typing import List, Optional, TYPE_CHECKING
 
 try:
     from pycdr2 import IdlStruct
-    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
     PYCDR2_AVAILABLE = True
 except ImportError:
     PYCDR2_AVAILABLE = False
     IdlStruct = object
     int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
     float32 = float64 = float
+    array = list  # Fallback
 
 
 # Import types from same package
@@ -26,6 +27,8 @@ if TYPE_CHECKING:
     pass
 
 
+
+
 @dataclass
 class Transform(IdlStruct, typename="geometry_msgs/Transform"):
 
@@ -33,12 +36,13 @@ class Transform(IdlStruct, typename="geometry_msgs/Transform"):
     
     Encoding: CDR
 
-    ROS 2 type hash: RIHS01_4097dc5d48d700e09c068919269d88b1d76109e16e510a619dd897e567ce315d
+    ROS 2 type hash: RIHS01_beb83fbe698636351461f6f35d1abb20010c43d55374d81bd041f1ba2581fddc
 
 
     DDS type name: geometry_msgs::msg::dds_::Transform_
 
     """
+
 
     translation: Vector3 = field(default_factory=Vector3)
 
@@ -47,7 +51,7 @@ class Transform(IdlStruct, typename="geometry_msgs/Transform"):
     
 
     # ROS2 Type Hash (RIHS01)
-    TYPE_HASH = "RIHS01_4097dc5d48d700e09c068919269d88b1d76109e16e510a619dd897e567ce315d"
+    TYPE_HASH = "RIHS01_beb83fbe698636351461f6f35d1abb20010c43d55374d81bd041f1ba2581fddc"
 
 
     # DDS Type Name

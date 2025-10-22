@@ -4,13 +4,20 @@ from typing import List, Optional, TYPE_CHECKING
 
 try:
     from pycdr2 import IdlStruct
-    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
     PYCDR2_AVAILABLE = True
 except ImportError:
     PYCDR2_AVAILABLE = False
     IdlStruct = object
     int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
     float32 = float64 = float
+    array = list  # Fallback
+
+
+
+# Import other package modules (not individual classes to avoid circular imports)
+
+from ...std_msgs import msg as std_msgs_msg
 
 
 
@@ -18,30 +25,37 @@ if TYPE_CHECKING:
     pass
 
 
-@dataclass
-class AddTwoInts_Response(IdlStruct, typename="example_interfaces/AddTwoInts_Response"):
 
-    """example_interfaces/AddTwoInts_Response message.
+
+@dataclass
+class RelativeHumidity(IdlStruct, typename="sensor_msgs/RelativeHumidity"):
+
+    """sensor_msgs/RelativeHumidity message.
     
     Encoding: CDR
 
-    ROS 2 type hash: RIHS01_de5c030d4af33cba2749310b249737b631594703f9300495f48bffb2b44dcc2f
+    ROS 2 type hash: RIHS01_8687c99b4fb393cb2e545e407b5ea7fd0b5d8960bcd849a0f86c544740138839
 
 
-    DDS type name: example_interfaces::srv::dds_::AddTwoInts_Response_
+    DDS type name: sensor_msgs::msg::dds_::RelativeHumidity_
 
     """
 
-    sum: int64 = 0
+
+    header: std_msgs_msg.Header = field(default_factory=lambda: std_msgs_msg.Header())
+
+    relative_humidity: float64 = 0.0
+
+    variance: float64 = 0.0
 
     
 
     # ROS2 Type Hash (RIHS01)
-    TYPE_HASH = "RIHS01_de5c030d4af33cba2749310b249737b631594703f9300495f48bffb2b44dcc2f"
+    TYPE_HASH = "RIHS01_8687c99b4fb393cb2e545e407b5ea7fd0b5d8960bcd849a0f86c544740138839"
 
 
     # DDS Type Name
-    DDS_TYPE_NAME = "example_interfaces::srv::dds_::AddTwoInts_Response_"
+    DDS_TYPE_NAME = "sensor_msgs::msg::dds_::RelativeHumidity_"
 
 
     def to_dict(self) -> dict:
@@ -49,7 +63,15 @@ class AddTwoInts_Response(IdlStruct, typename="example_interfaces/AddTwoInts_Res
         result = {}
 
 
-        result['sum'] = self.sum
+        result['header'] = self.header.to_dict()
+
+
+
+        result['relative_humidity'] = self.relative_humidity
+
+
+
+        result['variance'] = self.variance
 
 
         return result
@@ -59,9 +81,21 @@ class AddTwoInts_Response(IdlStruct, typename="example_interfaces/AddTwoInts_Res
         """Create from dictionary, recursively creating nested messages."""
         kwargs = {}
 
-        if 'sum' in data:
+        if 'header' in data:
 
-            kwargs['sum'] = data['sum']
+            
+            kwargs['header'] = std_msgs_msg.Header.from_dict(data['header'])
+            
+
+
+        if 'relative_humidity' in data:
+
+            kwargs['relative_humidity'] = data['relative_humidity']
+
+
+        if 'variance' in data:
+
+            kwargs['variance'] = data['variance']
 
 
         return cls(**kwargs)

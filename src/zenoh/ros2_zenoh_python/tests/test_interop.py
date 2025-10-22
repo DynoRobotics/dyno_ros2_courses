@@ -33,7 +33,7 @@ class TestInterop:
     @pytest.mark.interop
     @pytest.mark.skipif(not RCLPY_AVAILABLE, reason="rclpy not available")
     @pytest.mark.asyncio
-    async def test_zenoh_to_rclpy(self, zenoh_session_client):
+    async def test_zenoh_to_rclpy(self, rclpy_session, zenoh_session_client):
         """Test ros2_zenoh_python publisher to rclpy subscriber."""
         if not RCLPY_AVAILABLE:
             pytest.skip("rclpy not available")
@@ -43,11 +43,8 @@ class TestInterop:
         def rclpy_callback(msg):
             received_messages.append(msg)
         
-        # Initialize rclpy
-        rclpy.init()
-        
         try:
-            # Create rclpy node and subscriber
+            # Create rclpy node and subscriber FIRST
             rclpy_node = rclpy.create_node('rclpy_subscriber')
             rclpy_sub = rclpy_node.create_subscription(
                 RclpyTwist, 
@@ -56,11 +53,18 @@ class TestInterop:
                 10
             )
             
-            # Create zenoh publisher with client session
+            # Spin rclpy to ensure subscription is fully registered with bridge
+            for _ in range(10):
+                rclpy.spin_once(rclpy_node, timeout_sec=0.1)
+            
+            # Give bridge time to propagate subscriber info
+            await asyncio.sleep(1.0)
+            
+            # NOW create zenoh publisher - it should discover the rclpy subscriber through bridge
             async with Node('zenoh_publisher', zenoh_session=zenoh_session_client) as zenoh_node:
                 zenoh_pub = zenoh_node.create_publisher(Twist, '/test_interop')
                 
-                # Wait for discovery
+                # Wait for publisher-subscriber matching through bridge
                 await asyncio.sleep(1.0)
                 
                 # Publish from zenoh
@@ -70,8 +74,8 @@ class TestInterop:
                 )
                 zenoh_pub.publish(test_msg)
                 
-                # Spin rclpy to receive
-                for _ in range(10):
+                # Spin rclpy to receive the message
+                for _ in range(20):
                     rclpy.spin_once(rclpy_node, timeout_sec=0.1)
                     if received_messages:
                         break
@@ -86,13 +90,13 @@ class TestInterop:
                 print("\n✓ Zenoh → rclpy interop works!")
         
         finally:
-            rclpy_node.destroy_node()
-            rclpy.shutdown()
+            if 'rclpy_node' in locals():
+                rclpy_node.destroy_node()
     
     @pytest.mark.interop
     @pytest.mark.skipif(not RCLPY_AVAILABLE, reason="rclpy not available")
     @pytest.mark.asyncio
-    async def test_rclpy_to_zenoh(self, zenoh_session_client):
+    async def test_rclpy_to_zenoh(self, rclpy_session, zenoh_session_client):
         """Test rclpy publisher to ros2_zenoh_python subscriber."""
         if not RCLPY_AVAILABLE:
             pytest.skip("rclpy not available")
@@ -101,9 +105,6 @@ class TestInterop:
         
         async def zenoh_callback(msg: Twist):
             received_messages.append(msg)
-        
-        # Initialize rclpy
-        rclpy.init()
         
         try:
             # Create rclpy node and publisher
@@ -147,8 +148,8 @@ class TestInterop:
                 print("\n✓ rclpy → Zenoh interop works!")
         
         finally:
-            rclpy_node.destroy_node()
-            rclpy.shutdown()
+            if 'rclpy_node' in locals():
+                rclpy_node.destroy_node()
     
     @pytest.mark.asyncio
     async def test_message_hash_compatibility(self):
@@ -273,7 +274,7 @@ class TestGeneratedInterfaceHashes:
     @pytest.mark.interop
     @pytest.mark.skipif(not RCLPY_AVAILABLE, reason="rclpy not available")
     @pytest.mark.asyncio
-    async def test_generated_message_cross_compat(self, zenoh_session_client):
+    async def test_generated_message_cross_compat(self, rclpy_session, zenoh_session_client):
         """Test generated message can communicate with rclpy."""
         if not RCLPY_AVAILABLE:
             pytest.skip("rclpy not available")
@@ -289,8 +290,6 @@ class TestGeneratedInterfaceHashes:
         
         def rclpy_callback(msg):
             received_messages.append(msg)
-        
-        rclpy.init()
         
         try:
             rclpy_node = rclpy.create_node('test_rclpy_string')
@@ -319,8 +318,8 @@ class TestGeneratedInterfaceHashes:
                 print(f"\n✓ Generated message cross-compatibility works! Received: {received_messages[0].data}")
         
         finally:
-            rclpy_node.destroy_node()
-            rclpy.shutdown()
+            if 'rclpy_node' in locals():
+                rclpy_node.destroy_node()
 
 
 if __name__ == '__main__':

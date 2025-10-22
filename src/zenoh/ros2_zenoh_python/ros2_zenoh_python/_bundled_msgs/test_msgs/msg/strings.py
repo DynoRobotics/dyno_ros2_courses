@@ -4,13 +4,14 @@ from typing import List, Optional, TYPE_CHECKING
 
 try:
     from pycdr2 import IdlStruct
-    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
     PYCDR2_AVAILABLE = True
 except ImportError:
     PYCDR2_AVAILABLE = False
     IdlStruct = object
     int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
     float32 = float64 = float
+    array = list  # Fallback
 
 
 
@@ -18,32 +19,48 @@ if TYPE_CHECKING:
     pass
 
 
-@dataclass
-class AddTwoInts_Request(IdlStruct, typename="example_interfaces/AddTwoInts_Request"):
 
-    """example_interfaces/AddTwoInts_Request message.
+
+@dataclass
+class Strings(IdlStruct, typename="test_msgs/Strings"):
+
+    """test_msgs/Strings message.
     
     Encoding: CDR
 
-    ROS 2 type hash: RIHS01_000c5fd92d6b2e1a05949348f584d6d652adea1e92d691792011ac2273508302
+    ROS 2 type hash: RIHS01_7c7a232d70cdf571ff74ffc992cbf8e807913618b9a36d9f970bfd628850e743
 
 
-    DDS type name: example_interfaces::srv::dds_::AddTwoInts_Request_
+    DDS type name: test_msgs::msg::dds_::Strings_
 
     """
 
-    a: int64 = 0
+    # Constants
 
-    b: int64 = 0
+    STRING_CONST = "Hello world!"
+
+
+
+    string_value: str = ""
+
+    string_value_default1: str = "Hello world!"
+
+    string_value_default2: str = "Hello'world!"
+
+    string_value_default3: str = "Hello\"world!"
+
+    string_value_default4: str = "Hello\\'world!"
+
+    string_value_default5: str = "Hello\\\"world!"
 
     
 
     # ROS2 Type Hash (RIHS01)
-    TYPE_HASH = "RIHS01_000c5fd92d6b2e1a05949348f584d6d652adea1e92d691792011ac2273508302"
+    TYPE_HASH = "RIHS01_7c7a232d70cdf571ff74ffc992cbf8e807913618b9a36d9f970bfd628850e743"
 
 
     # DDS Type Name
-    DDS_TYPE_NAME = "example_interfaces::srv::dds_::AddTwoInts_Request_"
+    DDS_TYPE_NAME = "test_msgs::msg::dds_::Strings_"
 
 
     def to_dict(self) -> dict:
@@ -51,11 +68,27 @@ class AddTwoInts_Request(IdlStruct, typename="example_interfaces/AddTwoInts_Requ
         result = {}
 
 
-        result['a'] = self.a
+        result['string_value'] = self.string_value
 
 
 
-        result['b'] = self.b
+        result['string_value_default1'] = self.string_value_default1
+
+
+
+        result['string_value_default2'] = self.string_value_default2
+
+
+
+        result['string_value_default3'] = self.string_value_default3
+
+
+
+        result['string_value_default4'] = self.string_value_default4
+
+
+
+        result['string_value_default5'] = self.string_value_default5
 
 
         return result
@@ -65,14 +98,34 @@ class AddTwoInts_Request(IdlStruct, typename="example_interfaces/AddTwoInts_Requ
         """Create from dictionary, recursively creating nested messages."""
         kwargs = {}
 
-        if 'a' in data:
+        if 'string_value' in data:
 
-            kwargs['a'] = data['a']
+            kwargs['string_value'] = data['string_value']
 
 
-        if 'b' in data:
+        if 'string_value_default1' in data:
 
-            kwargs['b'] = data['b']
+            kwargs['string_value_default1'] = data['string_value_default1']
+
+
+        if 'string_value_default2' in data:
+
+            kwargs['string_value_default2'] = data['string_value_default2']
+
+
+        if 'string_value_default3' in data:
+
+            kwargs['string_value_default3'] = data['string_value_default3']
+
+
+        if 'string_value_default4' in data:
+
+            kwargs['string_value_default4'] = data['string_value_default4']
+
+
+        if 'string_value_default5' in data:
+
+            kwargs['string_value_default5'] = data['string_value_default5']
 
 
         return cls(**kwargs)

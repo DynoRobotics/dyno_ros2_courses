@@ -194,6 +194,48 @@ class Client:
         
         return attachment
     
+    async def wait_for_server(self, timeout: float = 5.0) -> bool:
+        """
+        Wait for service server to be available.
+        
+        Args:
+            timeout: Maximum time to wait in seconds
+            
+        Returns:
+            True if server is found, False if timeout
+        """
+        import os
+        domain_id = os.environ.get('ROS_DOMAIN_ID', '0')
+        service_name = self.service_name.lstrip('/')
+        
+        # Build liveliness pattern to match service servers
+        # Actual format: @ros2_lv/{domain}/{participant}/{entity_type}/{entity_id}/SS/{ns}/{ns2}/{node}/{service_encoded}/{type}/{hash}/{qos}
+        # Use proper Zenoh key expression syntax:
+        # - * matches a single segment
+        # - ** matches zero or more segments (must be complete segment)
+        # Service names are encoded as: %{name with / replaced by %}
+        service_name_encoded = '%' + service_name.replace('/', '%')
+        # Match: domain/participant/entity_type/entity_id/SS/ns/ns2/node/service_name/...rest
+        pattern = f"@ros2_lv/{domain_id}/*/*/*/SS/*/*/*/{service_name_encoded}/**"
+        
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            # Query liveliness
+            replies = self.session.liveliness().get(pattern, timeout=0.5)
+            
+            # Check if any server matches
+            for reply in replies:
+                if reply.ok:
+                    # Found a server
+                    logger.debug(f"Found server for {self.service_name}: {reply.ok.key_expr}")
+                    return True
+            
+            # Wait a bit before retrying
+            await asyncio.sleep(0.1)
+        
+        logger.warning(f"Service server {self.service_name} not found after {timeout}s")
+        return False
+    
     async def adestroy(self):
         """Async cleanup."""
         if hasattr(self, 'liveliness_token'):

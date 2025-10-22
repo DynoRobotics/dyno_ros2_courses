@@ -4,18 +4,21 @@ from typing import List, Optional, TYPE_CHECKING
 
 try:
     from pycdr2 import IdlStruct
-    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
     PYCDR2_AVAILABLE = True
 except ImportError:
     PYCDR2_AVAILABLE = False
     IdlStruct = object
     int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
     float32 = float64 = float
+    array = list  # Fallback
 
 
 
 if TYPE_CHECKING:
     pass
+
+
 
 
 @dataclass
@@ -31,6 +34,7 @@ class Point32(IdlStruct, typename="geometry_msgs/Point32"):
     DDS type name: geometry_msgs::msg::dds_::Point32_
 
     """
+
 
     x: float32 = 0.0
 
