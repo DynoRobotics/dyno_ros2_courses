@@ -33,72 +33,75 @@ class TestBasicPubSub:
     """Basic publisher/subscriber tests."""
     
     @pytest.mark.asyncio
-    async def test_single_pubsub(self, zenoh_session):
+    async def test_single_pubsub(self, shared_zenoh_node):
         """Test single publisher to single subscriber."""
         received_messages = []
         
         async def callback(msg: Twist):
             received_messages.append(msg)
         
-        # Create nodes with shared session
-        async with Node('test_publisher_1', zenoh_session=zenoh_session, enable_rosout=False) as pub_node:
-            async with Node('test_subscriber_1', zenoh_session=zenoh_session, enable_rosout=False) as sub_node:
-                # Create publisher and subscriber
-                pub = pub_node.create_publisher(Twist, '/test_topic_1')
-                sub = sub_node.create_subscription(Twist, '/test_topic_1', callback)
-                
-                # Tiny delay for Zenoh discovery (10ms is enough!)
-                await asyncio.sleep(0.01)
-                
-                # Publish test message
-                test_msg = Twist(
-                    linear=Vector3(x=1.0, y=2.0, z=3.0),
-                    angular=Vector3(x=0.1, y=0.2, z=0.3)
-                )
-                pub.publish(test_msg)
-                
-                # Wait for message with timeout
-                assert await wait_for_condition(lambda: len(received_messages) >= 1, timeout=1.0)
-                
-                # Verify
-                assert len(received_messages) == 1
-                assert received_messages[0].linear.x == 1.0
-                assert received_messages[0].linear.y == 2.0
-                assert received_messages[0].angular.z == 0.3
+        # Create publisher and subscriber
+        pub = shared_zenoh_node.create_publisher(Twist, '/test_topic_1')
+        sub = shared_zenoh_node.create_subscription(Twist, '/test_topic_1', callback)
+        
+        try:
+            # Tiny delay for Zenoh discovery (10ms is enough!)
+            await asyncio.sleep(0.01)
+            
+            # Publish test message
+            test_msg = Twist(
+                linear=Vector3(x=1.0, y=2.0, z=3.0),
+                angular=Vector3(x=0.1, y=0.2, z=0.3)
+            )
+            pub.publish(test_msg)
+            
+            # Wait for message with timeout
+            assert await wait_for_condition(lambda: len(received_messages) >= 1, timeout=1.0)
+            
+            # Verify
+            assert len(received_messages) == 1
+            assert received_messages[0].linear.x == 1.0
+            assert received_messages[0].linear.y == 2.0
+            assert received_messages[0].angular.z == 0.3
+        finally:
+            pub.destroy()
+            sub.destroy()
     
     @pytest.mark.asyncio
-    async def test_multiple_messages(self, zenoh_session):
+    async def test_multiple_messages(self, shared_zenoh_node):
         """Test multiple message delivery."""
         received_messages = []
         
         async def callback(msg: Twist):
             received_messages.append(msg)
         
-        async with Node('test_publisher_2', zenoh_session=zenoh_session, enable_rosout=False) as pub_node:
-            async with Node('test_subscriber_2', zenoh_session=zenoh_session, enable_rosout=False) as sub_node:
-                pub = pub_node.create_publisher(Twist, '/test_topic_2')
-                sub = sub_node.create_subscription(Twist, '/test_topic_2', callback)
-                
-                await asyncio.sleep(0.01)
-                
-                # Publish 5 messages
-                for i in range(5):
-                    msg = Twist(
-                        linear=Vector3(x=float(i), y=0.0, z=0.0),
-                        angular=Vector3(x=0.0, y=0.0, z=0.0)
-                    )
-                    pub.publish(msg)
-                
-                # Wait for all messages
-                assert await wait_for_condition(lambda: len(received_messages) >= 5, timeout=1.0)
-                
-                # Verify all messages received
-                assert len(received_messages) == 5
-                for i, msg in enumerate(received_messages):
-                    assert msg.linear.x == float(i)
+        pub = shared_zenoh_node.create_publisher(Twist, '/test_topic_2')
+        sub = shared_zenoh_node.create_subscription(Twist, '/test_topic_2', callback)
+        
+        try:
+            await asyncio.sleep(0.01)
+            
+            # Publish 5 messages
+            for i in range(5):
+                msg = Twist(
+                    linear=Vector3(x=float(i), y=0.0, z=0.0),
+                    angular=Vector3(x=0.0, y=0.0, z=0.0)
+                )
+                pub.publish(msg)
+            
+            # Wait for all messages
+            assert await wait_for_condition(lambda: len(received_messages) >= 5, timeout=1.0)
+            
+            # Verify all messages received
+            assert len(received_messages) == 5
+            for i, msg in enumerate(received_messages):
+                assert msg.linear.x == float(i)
+        finally:
+            pub.destroy()
+            sub.destroy()
     
     @pytest.mark.asyncio
-    async def test_multiple_subscribers(self, zenoh_session):
+    async def test_multiple_subscribers(self, shared_zenoh_node):
         """Test single publisher to multiple subscribers."""
         received_1 = []
         received_2 = []
@@ -109,37 +112,39 @@ class TestBasicPubSub:
         async def callback_2(msg: Twist):
             received_2.append(msg)
         
-        async with Node('test_publisher_3', zenoh_session=zenoh_session, enable_rosout=False) as pub_node:
-            async with Node('test_subscriber_3a', zenoh_session=zenoh_session, enable_rosout=False) as sub_node_1:
-                async with Node('test_subscriber_3b', zenoh_session=zenoh_session, enable_rosout=False) as sub_node_2:
-                    pub = pub_node.create_publisher(Twist, '/test_topic_3')
-                    sub1 = sub_node_1.create_subscription(Twist, '/test_topic_3', callback_1)
-                    sub2 = sub_node_2.create_subscription(Twist, '/test_topic_3', callback_2)
-                    
-                    await asyncio.sleep(0.01)
-                    
-                    # Publish message
-                    test_msg = Twist(
-                        linear=Vector3(x=5.0, y=0.0, z=0.0),
-                        angular=Vector3(x=0.0, y=0.0, z=0.0)
-                    )
-                    pub.publish(test_msg)
-                    
-                    # Wait for both subscribers
-                    assert await wait_for_condition(lambda: len(received_1) >= 1 and len(received_2) >= 1, timeout=1.0)
-                    
-                    # Both subscribers should receive
-                    assert len(received_1) == 1
-                    assert len(received_2) == 1
-                    assert received_1[0].linear.x == 5.0
-                    assert received_2[0].linear.x == 5.0
+        pub = shared_zenoh_node.create_publisher(Twist, '/test_topic_3')
+        sub1 = shared_zenoh_node.create_subscription(Twist, '/test_topic_3', callback_1)
+        sub2 = shared_zenoh_node.create_subscription(Twist, '/test_topic_3', callback_2)
+        
+        try:
+            await asyncio.sleep(0.01)
+            
+            # Publish message
+            test_msg = Twist(
+                linear=Vector3(x=5.0, y=0.0, z=0.0),
+                angular=Vector3(x=0.0, y=0.0, z=0.0)
+            )
+            pub.publish(test_msg)
+            
+            # Wait for both subscribers
+            assert await wait_for_condition(lambda: len(received_1) >= 1 and len(received_2) >= 1, timeout=1.0)
+            
+            # Both subscribers should receive
+            assert len(received_1) == 1
+            assert len(received_2) == 1
+            assert received_1[0].linear.x == 5.0
+            assert received_2[0].linear.x == 5.0
+        finally:
+            pub.destroy()
+            sub1.destroy()
+            sub2.destroy()
 
 
 class TestGeneratedInterfaces:
     """Test generated ros2_interfaces_py package."""
     
     @pytest.mark.asyncio
-    async def test_std_msgs_string(self, zenoh_session):
+    async def test_std_msgs_string(self, shared_zenoh_node):
         """Test std_msgs/String from generated package."""
         try:
             from ros2_zenoh_python._bundled_msgs.std_msgs.msg.string import String
@@ -151,22 +156,24 @@ class TestGeneratedInterfaces:
         async def callback(msg: String):
             received_messages.append(msg)
         
-        async with Node('test_string_pub', zenoh_session=zenoh_session, enable_rosout=False) as pub_node:
-            async with Node('test_string_sub', zenoh_session=zenoh_session, enable_rosout=False) as sub_node:
-                pub = pub_node.create_publisher(String, '/test_string_topic')
-                sub = sub_node.create_subscription(String, '/test_string_topic', callback)
-                
-                await asyncio.sleep(0.01)
-                
-                # Publish test messages
-                test_msg = String(data="Hello, ROS2!")
-                pub.publish(test_msg)
-                
-                assert await wait_for_condition(lambda: len(received_messages) >= 1, timeout=1.0)
-                assert received_messages[0].data == "Hello, ROS2!"
+        pub = shared_zenoh_node.create_publisher(String, '/test_string_topic')
+        sub = shared_zenoh_node.create_subscription(String, '/test_string_topic', callback)
+        
+        try:
+            await asyncio.sleep(0.01)
+            
+            # Publish test messages
+            test_msg = String(data="Hello, ROS2!")
+            pub.publish(test_msg)
+            
+            assert await wait_for_condition(lambda: len(received_messages) >= 1, timeout=1.0)
+            assert received_messages[0].data == "Hello, ROS2!"
+        finally:
+            pub.destroy()
+            sub.destroy()
     
     @pytest.mark.asyncio
-    async def test_std_msgs_int32(self, zenoh_session):
+    async def test_std_msgs_int32(self, shared_zenoh_node):
         """Test std_msgs/Int32 from generated package."""
         try:
             from ros2_zenoh_python._bundled_msgs.std_msgs.msg.int32 import Int32
@@ -178,22 +185,24 @@ class TestGeneratedInterfaces:
         async def callback(msg: Int32):
             received_messages.append(msg)
         
-        async with Node('test_int_pub', zenoh_session=zenoh_session, enable_rosout=False) as pub_node:
-            async with Node('test_int_sub', zenoh_session=zenoh_session, enable_rosout=False) as sub_node:
-                pub = pub_node.create_publisher(Int32, '/test_int_topic')
-                sub = sub_node.create_subscription(Int32, '/test_int_topic', callback)
-                
-                await asyncio.sleep(0.01)
-                
-                # Test various integer values
-                for val in [0, 42, -100, 2147483647]:
-                    pub.publish(Int32(data=val))
-                
-                assert await wait_for_condition(lambda: len(received_messages) >= 4, timeout=1.0)
-                assert [m.data for m in received_messages] == [0, 42, -100, 2147483647]
+        pub = shared_zenoh_node.create_publisher(Int32, '/test_int_topic')
+        sub = shared_zenoh_node.create_subscription(Int32, '/test_int_topic', callback)
+        
+        try:
+            await asyncio.sleep(0.01)
+            
+            # Test various integer values
+            for val in [0, 42, -100, 2147483647]:
+                pub.publish(Int32(data=val))
+            
+            assert await wait_for_condition(lambda: len(received_messages) >= 4, timeout=1.0)
+            assert [m.data for m in received_messages] == [0, 42, -100, 2147483647]
+        finally:
+            pub.destroy()
+            sub.destroy()
     
     @pytest.mark.asyncio
-    async def test_geometry_msgs_pose(self, zenoh_session):
+    async def test_geometry_msgs_pose(self, shared_zenoh_node):
         """Test geometry_msgs/Pose with nested messages."""
         try:
             from ros2_zenoh_python._bundled_msgs.geometry_msgs.msg.pose import Pose
@@ -207,29 +216,31 @@ class TestGeneratedInterfaces:
         async def callback(msg: Pose):
             received_messages.append(msg)
         
-        async with Node('test_pose_pub', zenoh_session=zenoh_session, enable_rosout=False) as pub_node:
-            async with Node('test_pose_sub', zenoh_session=zenoh_session, enable_rosout=False) as sub_node:
-                pub = pub_node.create_publisher(Pose, '/test_pose_topic')
-                sub = sub_node.create_subscription(Pose, '/test_pose_topic', callback)
-                
-                await asyncio.sleep(0.01)
-                
-                # Test nested message structure
-                test_msg = Pose(
-                    position=Point(x=1.0, y=2.0, z=3.0),
-                    orientation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
-                )
-                pub.publish(test_msg)
-                
-                assert await wait_for_condition(lambda: len(received_messages) >= 1, timeout=1.0)
-                msg = received_messages[0]
-                assert msg.position.x == 1.0
-                assert msg.position.y == 2.0
-                assert msg.position.z == 3.0
-                assert msg.orientation.w == 1.0
+        pub = shared_zenoh_node.create_publisher(Pose, '/test_pose_topic')
+        sub = shared_zenoh_node.create_subscription(Pose, '/test_pose_topic', callback)
+        
+        try:
+            await asyncio.sleep(0.01)
+            
+            # Test nested message structure
+            test_msg = Pose(
+                position=Point(x=1.0, y=2.0, z=3.0),
+                orientation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
+            )
+            pub.publish(test_msg)
+            
+            assert await wait_for_condition(lambda: len(received_messages) >= 1, timeout=1.0)
+            msg = received_messages[0]
+            assert msg.position.x == 1.0
+            assert msg.position.y == 2.0
+            assert msg.position.z == 3.0
+            assert msg.orientation.w == 1.0
+        finally:
+            pub.destroy()
+            sub.destroy()
     
     @pytest.mark.asyncio
-    async def test_generated_twist_matches_bundled(self, zenoh_session):
+    async def test_generated_twist_matches_bundled(self, shared_zenoh_node):
         """Test that generated Twist has same hash as bundled Twist."""
         try:
             from ros2_zenoh_python._bundled_msgs.geometry_msgs.msg.twist import Twist as GeneratedTwist

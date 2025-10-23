@@ -53,35 +53,37 @@ class TestInterop:
                 10
             )
             
-            # Spin rclpy to ensure subscription is fully registered with bridge
-            for _ in range(10):
-                rclpy.spin_once(rclpy_node, timeout_sec=0.1)
-            
-            # Give bridge time to propagate subscriber info
-            await asyncio.sleep(1.0)
+            # Let rclpy subscriber register with rmw_zenoh bridge (necessary for visibility)
+            await asyncio.sleep(0.1)
             
             # NOW create zenoh publisher - it should discover the rclpy subscriber through bridge
             async with Node('zenoh_publisher', zenoh_session=zenoh_session_client) as zenoh_node:
                 zenoh_pub = zenoh_node.create_publisher(Twist, '/test_interop')
                 
-                # Wait for publisher-subscriber matching through bridge
-                await asyncio.sleep(1.0)
+                # Wait for publisher to discover the rclpy subscriber
+                found = await zenoh_pub.wait_for_subscribers(timeout=5.0)
+                assert found, "Publisher did not find rclpy subscriber"
                 
-                # Publish from zenoh
+                # Publish from zenoh with retries (rmw_zenoh needs time to fully establish)
                 test_msg = Twist(
                     linear=Vector3(x=1.0, y=2.0, z=3.0),
                     angular=Vector3(x=0.1, y=0.2, z=0.3)
                 )
-                zenoh_pub.publish(test_msg)
                 
-                # Spin rclpy to receive the message
-                for _ in range(20):
-                    rclpy.spin_once(rclpy_node, timeout_sec=0.1)
+                # Publish until received (handles rmw_zenoh data path race)
+                for attempt in range(10):
+                    zenoh_pub.publish(test_msg)
+                    # Poll for receipt
+                    for _ in range(5):
+                        rclpy.spin_once(rclpy_node, timeout_sec=0.01)
+                        if received_messages:
+                            break
+                        await asyncio.sleep(0.01)
                     if received_messages:
                         break
                 
                 # Verify
-                assert len(received_messages) > 0, "rclpy did not receive message from zenoh"
+                assert len(received_messages) > 0, f"Message not received after {attempt+1} publish attempts"
                 msg = received_messages[0]
                 assert abs(msg.linear.x - 1.0) < 0.001
                 assert abs(msg.linear.y - 2.0) < 0.001
@@ -119,10 +121,11 @@ class TestInterop:
                     zenoh_callback
                 )
                 
-                # Wait for discovery
-                await asyncio.sleep(1.0)
+                # Wait for subscriber to discover rclpy publisher
+                found = await zenoh_sub.wait_for_publishers(timeout=5.0)
+                assert found, "Subscriber did not find rclpy publisher"
                 
-                # Publish from rclpy
+                # Publish from rclpy and actively wait for message to arrive
                 test_msg = RclpyTwist()
                 test_msg.linear.x = 5.0
                 test_msg.linear.y = 6.0
@@ -131,15 +134,20 @@ class TestInterop:
                 test_msg.angular.y = 0.6
                 test_msg.angular.z = 0.7
                 
-                for _ in range(5):
+                # Publish until received (handles rmw_zenoh data path race)
+                for attempt in range(10):
                     rclpy_pub.publish(test_msg)
-                    rclpy.spin_once(rclpy_node, timeout_sec=0.01)
-                    await asyncio.sleep(0.1)
-                
-                await asyncio.sleep(0.5)
+                    # Poll for receipt
+                    for _ in range(5):
+                        rclpy.spin_once(rclpy_node, timeout_sec=0.01)
+                        if received_messages:
+                            break
+                        await asyncio.sleep(0.01)
+                    if received_messages:
+                        break
                 
                 # Verify
-                assert len(received_messages) > 0, "zenoh did not receive message from rclpy"
+                assert len(received_messages) > 0, f"Message not received after {attempt+1} publish attempts"
                 msg = received_messages[0]
                 assert abs(msg.linear.x - 5.0) < 0.001
                 assert abs(msg.linear.y - 6.0) < 0.001
@@ -297,23 +305,32 @@ class TestGeneratedInterfaceHashes:
                 RclpyString, '/test_cross_compat_string', rclpy_callback, 10
             )
             
+            # Let rclpy subscriber register with rmw_zenoh bridge
+            await asyncio.sleep(0.1)
+            
             async with Node('test_zenoh_string', zenoh_session=zenoh_session_client, enable_rosout=False) as node:
                 pub = node.create_publisher(String, '/test_cross_compat_string')
                 
-                await asyncio.sleep(0.1)
+                # Wait for publisher to discover rclpy subscriber
+                found = await pub.wait_for_subscribers(timeout=5.0)
+                assert found, "Publisher did not find rclpy subscriber"
                 
-                # Publish from zenoh using generated message
-                for i in range(3):
-                    msg = String(data=f"Message {i}")
+                # Publish until received (handles rmw_zenoh data path race)
+                msg = String(data="Test Message")
+                for attempt in range(10):
                     pub.publish(msg)
-                    rclpy.spin_once(rclpy_node, timeout_sec=0.01)
-                    await asyncio.sleep(0.1)
+                    # Poll for receipt
+                    for _ in range(5):
+                        rclpy.spin_once(rclpy_node, timeout_sec=0.01)
+                        if received_messages:
+                            break
+                        await asyncio.sleep(0.01)
+                    if received_messages:
+                        break
                 
-                await asyncio.sleep(0.5)
-                
-                # Verify rclpy received
-                assert len(received_messages) > 0, "rclpy did not receive messages from zenoh"
-                assert received_messages[0].data.startswith("Message")
+                # Verify
+                assert len(received_messages) > 0, f"Message not received after {attempt+1} publish attempts"
+                assert received_messages[0].data == "Test Message"
                 
                 print(f"\n✓ Generated message cross-compatibility works! Received: {received_messages[0].data}")
         

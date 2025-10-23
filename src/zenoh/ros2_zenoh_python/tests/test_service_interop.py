@@ -108,13 +108,11 @@ async def test_rclpy_client_to_zenoh_server(rclpy_session, zenoh_session_client)
     zenoh_node = Node('zenoh_server', enable_rosout=False, zenoh_session=zenoh_session_client)
     zenoh_service = zenoh_node.create_service(AddTwoInts, 'test_interop_add2', handle_add)
     
-    await asyncio.sleep(0.5)
-    
     # Create rclpy client
     rclpy_node = rclpy.create_node('rclpy_client')
     rclpy_client = rclpy_node.create_client(RclpyAddTwoInts, 'test_interop_add2')
     
-    # Wait for service
+    # Wait for service (handles discovery)
     if not rclpy_client.wait_for_service(timeout_sec=5.0):
         pytest.fail("Service not available")
     
@@ -191,7 +189,6 @@ async def test_multiple_zenoh_clients_to_rclpy_server_stress(rclpy_session, zeno
             """Single client making a service call."""
             async with Node(f'zenoh_client_{client_id}', enable_rosout=False, zenoh_session=zenoh_session_client) as node:
                 client = node.create_client(AddTwoInts, 'test_stress_add')
-                await asyncio.sleep(0.5)  # Brief wait for discovery
                 
                 a = client_id
                 b = client_id * 10

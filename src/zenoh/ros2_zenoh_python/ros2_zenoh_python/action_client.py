@@ -196,13 +196,8 @@ class ActionClient:
         request = self.cancel_goal_type.Request()
         request.goal_info = action_msgs.msg.GoalInfo()
         request.goal_info.goal_id = goal_handle.goal_id
-        
-        # Set timestamp
-        from ._bundled_msgs import builtin_interfaces
-        import time
-        request.goal_info.stamp = builtin_interfaces.msg.Time()
-        request.goal_info.stamp.sec = int(time.time())
-        request.goal_info.stamp.nanosec = int((time.time() % 1) * 1e9)
+        # Note: We do NOT set the timestamp - leave it at default (zeros)
+        # to match rclpy's behavior. The goal_id is sufficient for matching.
         
         response = await self._cancel_goal_client.call_async(request)
         return response
@@ -276,8 +271,13 @@ class ActionClient:
     
     def destroy(self):
         """Destroy the action client."""
+        if hasattr(self, '_destroyed') and self._destroyed:
+            return  # Already destroyed
+        
         self._feedback_callbacks.clear()
         self._goal_handles.clear()
+        
+        self._destroyed = True
         logger.info(f"ActionClient '{self.action_name}' destroyed")
 
 

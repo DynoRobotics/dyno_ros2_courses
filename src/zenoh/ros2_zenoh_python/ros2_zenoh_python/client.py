@@ -238,18 +238,22 @@ class Client:
     
     async def adestroy(self):
         """Async cleanup."""
-        if hasattr(self, 'liveliness_token'):
-            self.liveliness_token.undeclare()
-        if hasattr(self, '_owns_session') and self._owns_session:
-            self.session.close()
-        logger.debug(f"Service client destroyed: {self.service_name}")
+        self.destroy()  # Cleanup is already non-blocking, reuse sync version
     
     def destroy(self):
         """Sync cleanup."""
+        if hasattr(self, '_destroyed') and self._destroyed:
+            return  # Already destroyed
+        
         if hasattr(self, 'liveliness_token'):
-            self.liveliness_token.undeclare()
+            try:
+                self.liveliness_token.undeclare()
+            except Exception as e:
+                logger.debug(f"Error undeclaring liveliness token: {e}")
         if hasattr(self, '_owns_session') and self._owns_session:
             self.session.close()
+        
+        self._destroyed = True
         logger.debug(f"Service client destroyed: {self.service_name}")
 
 

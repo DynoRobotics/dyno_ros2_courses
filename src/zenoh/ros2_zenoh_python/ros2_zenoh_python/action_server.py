@@ -439,6 +439,9 @@ class ActionServer:
     
     def destroy(self):
         """Destroy the action server."""
+        if hasattr(self, '_destroyed') and self._destroyed:
+            return  # Already destroyed
+        
         # Stop status thread
         self._status_thread_running = False
         if self._status_thread.is_alive():
@@ -447,6 +450,7 @@ class ActionServer:
         # Destroy services and publishers
         # (Node will handle cleanup on shutdown)
         
+        self._destroyed = True
         logger.info(f"ActionServer '{self.action_name}' destroyed")
 
 

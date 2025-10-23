@@ -186,15 +186,75 @@ class Publisher:
             attachment=attachment
         )
     
+    async def wait_for_subscribers(self, timeout: float = 5.0) -> bool:
+        """
+        Wait for at least one subscriber to be available.
+        
+        Args:
+            timeout: Maximum time to wait in seconds
+            
+        Returns:
+            True if subscriber found, False if timeout
+        """
+        import asyncio
+        
+        # Get domain ID
+        domain_id = os.environ.get('ROS_DOMAIN_ID', '0')
+        
+        # Encode topic name for liveliness key (replace / with %)
+        topic_encoded = self.topic.replace('/', '%')
+        
+        # Query pattern for subscribers (MS = Matched Subscription) on this topic
+        # Format: @ros2_lv/{domain}/MS/*/*/*/{topic_name}/**
+        # Note: rmw_zenoh uses MS for subscriptions, not SS
+        query_pattern = f"@ros2_lv/{domain_id}/*/*/*/MS/**/{topic_encoded}/**"
+        
+        start_time = asyncio.get_event_loop().time()
+        
+        while True:
+            try:
+                # Query liveliness
+                replies = self.session.liveliness().get(query_pattern)
+                
+                # Check if we got any replies
+                for reply in replies:
+                    if reply.ok:
+                        # Found at least one subscriber
+                        sample = reply.ok
+                        logger.debug(f"Publisher found subscriber: {sample.key_expr}")
+                        # Note: rmw_zenoh may have race between liveliness and data path ready
+                        # Applications should retry publish if first message doesn't arrive
+                        return True
+                
+                # Check timeout
+                elapsed = asyncio.get_event_loop().time() - start_time
+                if elapsed >= timeout:
+                    logger.debug(f"Publisher wait_for_subscribers timed out after {timeout}s")
+                    return False
+                
+                # Wait a bit before retrying
+                await asyncio.sleep(0.1)
+                
+            except Exception as e:
+                logger.debug(f"Error querying liveliness: {e}")
+                return False
+    
     def destroy(self):
         """Destroy the publisher and clean up resources."""
+        if hasattr(self, '_destroyed') and self._destroyed:
+            return  # Already destroyed
+        
         if hasattr(self, 'liveliness_token'):
-            self.liveliness_token.undeclare()
+            try:
+                self.liveliness_token.undeclare()
+            except Exception as e:
+                logger.debug(f"Error undeclaring liveliness token: {e}")
         
         # Only close session if we own it
         if self._own_session and hasattr(self, 'session'):
             self.session.close()
         
+        self._destroyed = True
         logger.debug(f"Publisher for topic '{self.topic}' destroyed")
     
     async def adestroy(self):

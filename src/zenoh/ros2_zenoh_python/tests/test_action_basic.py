@@ -13,16 +13,8 @@ from ros2_zenoh_python._bundled_msgs import example_interfaces
 Fibonacci = example_interfaces.action.Fibonacci
 
 
-@pytest.fixture
-def node():
-    """Create a test node."""
-    n = Node('test_action_node')
-    yield n
-    n.destroy_node()
-
-
 @pytest.mark.asyncio
-async def test_action_goal_accepted(node):
+async def test_action_goal_accepted(shared_zenoh_node):
     """Test that action goal can be sent and accepted."""
     
     # Goal execution callback
@@ -33,20 +25,20 @@ async def test_action_goal_accepted(node):
         return result
     
     # Create server
-    server = node.create_action_server(
+    server = shared_zenoh_node.create_action_server(
         Fibonacci,
         'test_fibonacci',
         execute_callback=execute_fibonacci
     )
     
     # Create client
-    client = node.create_action_client(
+    client = shared_zenoh_node.create_action_client(
         Fibonacci,
         'test_fibonacci'
     )
     
     # Wait for discovery
-    await asyncio.sleep(0.5)
+    await client.wait_for_action_server(timeout=5.0)
     
     # Send goal
     goal = Fibonacci.Goal()
@@ -71,7 +63,7 @@ async def test_action_goal_accepted(node):
 
 
 @pytest.mark.asyncio
-async def test_action_with_feedback(node):
+async def test_action_with_feedback(shared_zenoh_node):
     """Test action with feedback messages."""
     
     feedback_received = []
@@ -94,19 +86,19 @@ async def test_action_with_feedback(node):
         feedback_received.append(len(feedback_msg.feedback.sequence))
     
     # Create server
-    server = node.create_action_server(
+    server = shared_zenoh_node.create_action_server(
         Fibonacci,
         'test_feedback',
         execute_callback=execute_with_feedback
     )
     
     # Create client
-    client = node.create_action_client(
+    client = shared_zenoh_node.create_action_client(
         Fibonacci,
         'test_feedback'
     )
     
-    await asyncio.sleep(0.5)
+    await client.wait_for_action_server(timeout=5.0)
     
     # Send goal with feedback callback
     goal = Fibonacci.Goal()
@@ -115,11 +107,14 @@ async def test_action_with_feedback(node):
     goal_handle = await client.send_goal_async(goal, feedback_callback=feedback_callback)
     result = await client.get_result_async(goal_handle)
     
-    # Wait a bit for feedback to arrive
-    await asyncio.sleep(0.5)
+    # Actively wait for feedback (max 0.5s)
+    for _ in range(25):
+        if len(feedback_received) > 0:
+            break
+        await asyncio.sleep(0.02)
     
     # Verify we got feedback
-    assert len(feedback_received) > 0
+    assert len(feedback_received) > 0, "No feedback received - check feedback mechanism"
     
     # Cleanup
     server.destroy()
@@ -127,7 +122,7 @@ async def test_action_with_feedback(node):
 
 
 @pytest.mark.asyncio
-async def test_action_goal_rejected(node):
+async def test_action_goal_rejected(shared_zenoh_node):
     """Test that action goal can be rejected."""
     
     def goal_callback(goal_request):
@@ -143,7 +138,7 @@ async def test_action_goal_rejected(node):
         return result
     
     # Create server with goal callback
-    server = node.create_action_server(
+    server = shared_zenoh_node.create_action_server(
         Fibonacci,
         'test_reject',
         execute_callback=execute_callback,
@@ -151,12 +146,12 @@ async def test_action_goal_rejected(node):
     )
     
     # Create client
-    client = node.create_action_client(
+    client = shared_zenoh_node.create_action_client(
         Fibonacci,
         'test_reject'
     )
     
-    await asyncio.sleep(0.5)
+    await client.wait_for_action_server(timeout=5.0)
     
     # Send goal that should be rejected
     goal = Fibonacci.Goal()
@@ -178,7 +173,7 @@ async def test_action_goal_rejected(node):
 
 
 @pytest.mark.asyncio
-async def test_action_cancel(node):
+async def test_action_cancel(shared_zenoh_node):
     """Test action goal cancellation."""
     
     cancel_requested = False
@@ -202,19 +197,19 @@ async def test_action_cancel(node):
         return result
     
     # Create server
-    server = node.create_action_server(
+    server = shared_zenoh_node.create_action_server(
         Fibonacci,
         'test_cancel',
         execute_callback=execute_long_action
     )
     
     # Create client
-    client = node.create_action_client(
+    client = shared_zenoh_node.create_action_client(
         Fibonacci,
         'test_cancel'
     )
     
-    await asyncio.sleep(0.5)
+    await client.wait_for_action_server(timeout=5.0)
     
     # Send goal
     goal = Fibonacci.Goal()
@@ -226,18 +221,22 @@ async def test_action_cancel(node):
     # Cancel immediately
     cancel_response = await client.cancel_goal_async(goal_handle)
     
-    # Wait for cancellation to process
-    await asyncio.sleep(0.5)
+    # Actively wait for cancel (max 0.5s)
+    for _ in range(25):
+        if cancel_requested:
+            break
+        await asyncio.sleep(0.02)
     
     # Verify cancellation was requested
-    assert cancel_requested
+    assert cancel_requested, "Cancel was not processed - check cancel mechanism"
     
     # Cleanup
     server.destroy()
     client.destroy()
 
 
-def test_action_creation(node):
+@pytest.mark.asyncio
+async def test_action_creation(shared_zenoh_node):
     """Test basic action server and client creation."""
     
     async def dummy_execute(goal_handle):
@@ -246,7 +245,7 @@ def test_action_creation(node):
         return result
     
     # Create server
-    server = node.create_action_server(
+    server = shared_zenoh_node.create_action_server(
         Fibonacci,
         'test_create',
         execute_callback=dummy_execute
@@ -256,7 +255,7 @@ def test_action_creation(node):
     assert server.action_name == 'test_create'
     
     # Create client
-    client = node.create_action_client(
+    client = shared_zenoh_node.create_action_client(
         Fibonacci,
         'test_create'
     )

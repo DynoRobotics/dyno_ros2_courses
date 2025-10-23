@@ -43,9 +43,11 @@ async def main():
         logger.info(f"🔌 Client created: {client.service_name}")
         logger.info(f"   Key expression: {client.key_expr}")
         
-        # Wait for service discovery
-        logger.info("⏳ Waiting for service discovery...")
-        await asyncio.sleep(1.0)
+        # Wait for service to be available
+        logger.info("⏳ Waiting for service...")
+        if not await client.wait_for_server(timeout=5.0):
+            logger.error("❌ Service not found!")
+            return
         
         # Make several service calls
         test_cases = [

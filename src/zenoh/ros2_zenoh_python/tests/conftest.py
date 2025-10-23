@@ -3,6 +3,7 @@ Pytest configuration for ros2_zenoh_python tests with shared Zenoh session
 """
 
 import pytest
+import pytest_asyncio
 import asyncio
 import zenoh
 import sys
@@ -116,6 +117,35 @@ def rclpy_session():
     except ImportError:
         # rclpy not available, skip
         yield None
+
+
+@pytest_asyncio.fixture(scope="module")
+async def shared_zenoh_node(zenoh_session):
+    """
+    Shared Zenoh node for module-level test isolation.
+    
+    Reuses the session but creates a fresh node for each test module.
+    Tests should clean up their own publishers/subscribers/services/actions.
+    """
+    from ros2_zenoh_python import Node
+    
+    async with Node('shared_test_node', zenoh_session=zenoh_session, enable_rosout=False) as node:
+        yield node
+        # Node cleanup happens automatically via context manager
+
+
+@pytest_asyncio.fixture(scope="module")  
+async def shared_zenoh_client_node(zenoh_session_client):
+    """
+    Shared Zenoh client node (connects to bridge) for module-level test isolation.
+    
+    Reuses the client session but creates a fresh node for each test module.
+    """
+    from ros2_zenoh_python import Node
+    
+    async with Node('shared_client_node', zenoh_session=zenoh_session_client, enable_rosout=False) as node:
+        yield node
+        # Node cleanup happens automatically via context manager
 
 
 def pytest_sessionfinish(session, exitstatus):
