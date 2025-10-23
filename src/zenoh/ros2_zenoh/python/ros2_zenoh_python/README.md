@@ -1,0 +1,530 @@
+# ros2_zenoh_python
+
+A Python library for ROS2-Zenoh interoperability using asyncio.
+
+## Overview
+
+`ros2_zenoh_python` enables Python applications to communicate with ROS2 nodes using Zenoh as the transport layer. It provides seamless interoperability with standard ROS2 nodes running `rmw_zenoh_cpp`.
+
+### Key Features
+
+- 🚀 **Async-First Design** - Built on `asyncio` for modern Python async/await patterns
+- 🔗 **ROS2 Interoperability** - Full compatibility with `rmw_zenoh_cpp` and standard ROS2 nodes
+- 📡 **Zenoh Transport** - Leverages Zenoh's efficient pub/sub with DDS compatibility
+- 🎯 **Type-Safe Messages** - Uses generated CDR-compatible message types
+- 📝 **Pythonic Logging** - Standard Python `logging` with `/rosout` publishing
+- ⚡ **High Performance** - Shared Zenoh sessions, minimal overhead
+- 🛡️ **Signal Handling** - Automatic graceful shutdown on SIGINT/SIGTERM
+- 🧪 **Comprehensive Tests** - Fast test suite with timing benchmarks
+
+## Installation
+
+### Core Library
+
+```bash
+cd /path/to/ros2_zenoh_python
+pip install -e .
+```
+
+The core package includes:
+- Transport layer (Node, Publisher, Subscription)
+- Pythonic logging with `/rosout` support
+- **Bundled essential messages** (~10KB)
+  - `geometry_msgs.msg.Twist` & `Vector3` (for examples)
+  - `rcl_interfaces.msg.Log` (for `/rosout`)
+  - `builtin_interfaces.msg.Time` (for timestamps)
+
+### Message Types
+
+#### Using Bundled Messages
+
+The core package includes minimal essential types:
+
+```python
+# Bundled messages work out-of-the-box
+from ros2_zenoh_python._bundled_msgs.geometry_msgs.msg.twist import Twist
+from ros2_zenoh_python._bundled_msgs.rcl_interfaces.msg.log import Log
+```
+
+#### Full Standard Messages (Optional)
+
+For the complete ROS2 message ecosystem (200+ types, ~5MB):
+
+```bash
+cd /path/to/ros2_zenoh_python/tools/unified_output/python
+pip install -e .  # Installs ros2_interfaces_py
+```
+
+```python
+# Full package provides all standard ROS2 messages
+from ros2_interfaces_py.sensor_msgs.msg.image import Image
+from ros2_interfaces_py.std_msgs.msg.string import String
+```
+
+#### Custom Messages
+
+Generate only what you need:
+
+```bash
+cd /path/to/ros2_zenoh_python/tools
+python generate_unified_types.py \
+    --interface my_custom_msgs/msg/MyMessage \
+    --output ./my_messages
+```
+
+### Package Architecture
+
+```
+ros2_zenoh_python (~60KB)          ros2_interfaces_py (~5MB)
+├── Transport layer (~50KB)        └── 200+ standard messages
+└── _bundled_msgs (~10KB)              (optional)
+    ├── Twist, Vector3
+    ├── Log, Time
+    └── (essentials only)
+```
+
+**Benefits:**
+- ✅ `/rosout` logging works without dependencies
+- ✅ Examples and tests run standalone
+- ✅ Custom-message-only projects stay lightweight
+- ✅ Optional full ROS2 message support
+
+### Prerequisites
+
+- Python 3.8+
+- Zenoh Python (`zenoh`)
+- ROS2 Jazzy (for interoperability)
+- `rmw_zenoh_cpp` running (Zenoh router daemon)
+
+## Quick Start
+
+### Simple Publisher
+
+```python
+import asyncio
+from ros2_zenoh_python import Node
+from ros2_interfaces_py.geometry_msgs.msg.twist import Twist
+from ros2_interfaces_py.geometry_msgs.msg.vector3 import Vector3
+
+async def main():
+    # Node automatically connects to ROS2 Zenoh router at localhost:7447
+    async with Node('my_publisher') as node:
+        pub = node.create_publisher(Twist, '/cmd_vel')
+        
+        while not node.shutdown_requested:
+            msg = Twist(
+                linear=Vector3(x=1.0, y=0.0, z=0.0),
+                angular=Vector3(x=0.0, y=0.0, z=0.5)
+            )
+            pub.publish(msg)
+            await asyncio.sleep(1.0)
+
+asyncio.run(main())
+```
+
+### Simple Subscriber
+
+```python
+import asyncio
+from ros2_zenoh_python import Node
+from ros2_interfaces_py.geometry_msgs.msg.twist import Twist
+
+async def callback(msg: Twist):
+    print(f"Received: linear.x={msg.linear.x}, angular.z={msg.angular.z}")
+
+async def main():
+    async with Node('my_subscriber') as node:
+        sub = node.create_subscription(Twist, '/cmd_vel', callback)
+        await node.spin()  # Runs until Ctrl+C
+
+asyncio.run(main())
+```
+
+## Usage
+
+### Creating a Node
+
+#### Default Configuration (Recommended)
+```python
+# Automatically connects to localhost:7447 for ROS2 interop
+async with Node('my_node') as node:
+    # ... use node ...
+    pass
+```
+
+#### With Shared Session (For Multiple Nodes)
+```python
+import zenoh
+
+config = zenoh.Config()
+config.insert_json5("mode", '"client"')
+config.insert_json5("connect/endpoints", '["tcp/localhost:7447"]')
+session = zenoh.open(config)
+
+async with Node('node1', zenoh_session=session) as node1:
+    async with Node('node2', zenoh_session=session) as node2:
+        # Both nodes share the same Zenoh session
+        pass
+
+session.close()
+```
+
+#### Custom Configuration
+
+For custom Zenoh configurations, create your own session and pass it to the Node:
+
+```python
+import zenoh
+
+# Create custom config
+config = zenoh.Config()
+config.insert_json5("mode", '"peer"')  # Peer-to-peer mode
+session = zenoh.open(config)
+
+try:
+    async with Node('my_node', zenoh_session=session) as node:
+        # Use the node
+        pass
+finally:
+    session.close()
+```
+
+### Publishing Messages
+
+```python
+# Create publisher
+pub = node.create_publisher(Twist, '/topic_name')
+
+# Publish (synchronous, non-blocking)
+msg = Twist(linear=Vector3(x=1.0))
+pub.publish(msg)
+```
+
+### Subscribing to Messages
+
+#### Sync Callback
+```python
+def callback(msg: Twist):
+    print(f"Got: {msg.linear.x}")
+
+sub = node.create_subscription(Twist, '/topic_name', callback)
+```
+
+#### Async Callback (Recommended)
+```python
+async def callback(msg: Twist):
+    # Can use await inside callback
+    await process_message(msg)
+
+sub = node.create_subscription(Twist, '/topic_name', callback)
+```
+
+### Node Lifecycle
+
+```python
+# Async context manager (recommended)
+async with Node('my_node') as node:
+    # Signal handlers automatically installed
+    # node.shutdown_requested becomes True on SIGINT/SIGTERM
+    while not node.shutdown_requested:
+        await asyncio.sleep(1.0)
+# Cleanup happens automatically
+
+# Or manual lifecycle
+node = Node('my_node')
+# ... use node ...
+node.destroy_node()
+```
+
+### Spinning the Node
+
+```python
+# Spin forever (until Ctrl+C)
+await node.spin()
+
+# Or check manually in your loop
+while not node.shutdown_requested:
+    # Your code here
+    await asyncio.sleep(0.1)
+```
+
+## Configuration
+
+### Zenoh Modes
+
+#### Client Mode (Default - ROS2 Interop)
+Connects to a Zenoh router for ROS2 interoperability:
+```python
+config = zenoh.Config()
+config.insert_json5("mode", '"client"')
+config.insert_json5("connect/endpoints", '["tcp/localhost:7447"]')
+```
+
+#### Peer Mode (Standalone)
+Direct peer-to-peer discovery (no ROS2 interop):
+```python
+config = zenoh.Config()
+config.insert_json5("mode", '"peer"')
+```
+
+### Quality of Service (QoS)
+
+```python
+qos = {
+    'reliability': 'reliable',  # or 'best_effort'
+    'durability': 'volatile',   # or 'transient_local'
+    'history': 'keep_last',
+    'depth': 10
+}
+pub = node.create_publisher(Twist, '/topic', qos_profile=qos)
+```
+
+## Examples
+
+### Run Examples
+
+```bash
+# Terminal 1: Publisher
+python3 ros2_zenoh_python/examples/pub.py
+
+# Terminal 2: Subscriber
+python3 ros2_zenoh_python/examples/sub.py
+```
+
+### Example Files
+
+- `examples/pub.py` - Simple publisher (53 lines)
+- `examples/sub.py` - Simple subscriber (48 lines)
+
+## Testing
+
+### Run All Tests
+
+```bash
+pytest ros2_zenoh_python/tests/ -v
+```
+
+**Test Results:**
+```
+9 passed in 4.8s
+
+✓ Basic pub/sub (3 tests)
+✓ Timing & latency (3 tests)  
+✓ ROS2 interoperability (3 tests)
+```
+
+### Test Suites
+
+- `test_basic_pubsub.py` - Core pub/sub functionality
+- `test_timing.py` - Latency and throughput benchmarks
+- `test_interop.py` - ROS2 `rclpy` interoperability
+
+### Run Specific Tests
+
+```bash
+# Basic functionality only
+pytest ros2_zenoh_python/tests/test_basic_pubsub.py -v
+
+# Skip interop tests (if rclpy not available)
+pytest ros2_zenoh_python/tests/ -v -m "not interop"
+
+# Show timing stats
+pytest ros2_zenoh_python/tests/test_timing.py -v -s
+```
+
+## Architecture
+
+### Components
+
+```
+ros2_zenoh_python/
+├── node.py              # Node class with async support
+├── publisher.py         # Publisher implementation
+├── subscription.py      # Subscription with async callbacks
+├── liveliness_manager.py # ROS2 discovery via Zenoh liveliness
+├── message_serializer.py # CDR serialization
+├── logger.py            # /rosout integration
+└── examples/            # Simple usage examples
+```
+
+### Message Flow
+
+```
+Python App → Node → Publisher → Zenoh (CDR) → rmw_zenoh_cpp → ROS2 Node
+ROS2 Node → rmw_zenoh_cpp → Zenoh (CDR) → Subscription → Node → Python App
+```
+
+### Key Concepts
+
+- **Zenoh Session** - Connection to Zenoh router (shared across nodes)
+- **Liveliness Tokens** - ROS2 node/topic discovery mechanism
+- **CDR Serialization** - DDS-compatible message encoding
+- **Type Hash (RIHS01)** - Message type compatibility verification
+
+## API Reference
+
+### Node
+
+```python
+class Node:
+    def __init__(
+        self,
+        node_name: str,
+        zenoh_session: Optional[zenoh.Session] = None,
+        namespace: str = "",
+        enable_rosout: bool = True
+    )
+    
+    def create_publisher(self, msg_type: Type, topic: str, qos_profile: Optional[dict] = None) -> Publisher
+    def create_subscription(self, msg_type: Type, topic: str, callback: Callable, qos_profile: Optional[dict] = None) -> Subscription
+    
+    async def spin(self) -> None
+    async def adestroy_node(self) -> None
+    
+    @property
+    def shutdown_requested(self) -> bool
+```
+
+### Publisher
+
+```python
+class Publisher:
+    def publish(self, message: Any) -> None
+    def destroy(self) -> None
+```
+
+### Subscription
+
+```python
+class Subscription:
+    def destroy(self) -> None
+```
+
+## Interoperability
+
+### With ROS2 Nodes
+
+`ros2_zenoh_python` nodes can communicate with any ROS2 node using `rmw_zenoh_cpp`:
+
+```bash
+# Terminal 1: Standard ROS2 talker
+ros2 run demo_nodes_cpp talker
+
+# Terminal 2: Python Zenoh listener
+python3 -c "
+import asyncio
+from ros2_zenoh_python import Node
+from ros2_interfaces_py.std_msgs.msg.string import String
+
+async def cb(msg):
+    print(f'Got: {msg.data}')
+
+async def main():
+    async with Node('listener') as node:
+        node.create_subscription(String, '/chatter', cb)
+        await node.spin()
+
+asyncio.run(main())
+"
+```
+
+### Message Types
+
+Standard ROS2 message types are provided in the separate `ros2_interfaces_py` package, generated from ROS2 IDL files with compatible CDR serialization and RIHS01 type hashes.
+
+**Custom Messages:**
+You can generate your own custom message types using [`ros2_interface_generator`](../ros2_interface_generator):
+```bash
+# Install the generator
+cd ../ros2_interface_generator
+pip install -e .
+
+# Generate standard ROS2 messages
+ros2-generate-interfaces -l python -e cdr -o ros2_interfaces_py
+
+# Generate custom messages from your workspace
+ros2-generate-interfaces -l python -e cdr -i ~/my_ws -o my_custom_msgs_py
+```
+
+**Package Structure:**
+```
+ros2_zenoh_python/      # Transport library (this package)
+ros2_interface_generator/ # Code generator (separate package)
+ros2_interfaces_py/     # Standard ROS2 messages (generated output)
+your_custom_msgs_py/    # Your custom messages (you generate)
+```
+
+## Performance
+
+Benchmark results from `test_timing.py`:
+
+- **Latency**: ~4ms average (peer-to-peer)
+- **Throughput**: >70,000 msg/s
+- **Multi-node**: 2-3ms latency with multiple subscribers
+
+## Troubleshooting
+
+### Connection Issues
+
+**Problem:** `session closed` errors
+
+**Solution:** Ensure `rmw_zenohd` is running:
+```bash
+ros2 run rmw_zenoh_cpp rmw_zenohd
+```
+
+### Import Errors
+
+**Problem:** `ModuleNotFoundError: No module named 'ros2_interfaces_py'`
+
+**Solution:** Ensure the generated messages are in your Python path:
+```python
+sys.path.insert(0, "/path/to/tools/unified_output/python")
+```
+
+### Type Hash Mismatch
+
+**Problem:** Messages not received by ROS2 nodes
+
+**Solution:** Regenerate messages with correct ROS2 type hashes:
+```bash
+cd tools
+python3 generate_unified_types.py
+```
+
+## Development
+
+### Running Tests During Development
+
+```bash
+# Fast: Run with shared sessions
+pytest ros2_zenoh_python/tests/ -v
+
+# Show print output
+pytest ros2_zenoh_python/tests/ -v -s
+
+# Specific test
+pytest ros2_zenoh_python/tests/test_basic_pubsub.py::TestBasicPubSub::test_single_pubsub -v
+```
+
+### Code Style
+
+- **Async-first**: Use `async`/`await` for all I/O operations
+- **Type hints**: Use type annotations for better IDE support
+- **Logging**: Use `logging` module, not `print()`
+- **Context managers**: Use `async with` for resource management
+
+## License
+
+[Your License Here]
+
+## Contributing
+
+[Contributing Guidelines]
+
+## Acknowledgments
+
+- Built on [Eclipse Zenoh](https://zenoh.io/)
+- Compatible with [ROS2 Jazzy](https://docs.ros.org/en/jazzy/)
+- Uses `rmw_zenoh_cpp` for ROS2 integration
+

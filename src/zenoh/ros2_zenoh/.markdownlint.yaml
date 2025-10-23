@@ -1,0 +1,69 @@
+# Markdown linting rules for documentation
+# https://github.com/DavidAnson/markdownlint
+
+# Default state for all rules
+default: true
+
+# Heading styles
+MD001: true  # Heading levels increment by one
+MD003:       # Heading style
+  style: atx  # Use # style headers
+
+# Lists
+MD004:       # Unordered list style
+  style: dash  # Use - for lists
+MD005: true  # Consistent indentation for list items
+MD007:       # Unordered list indentation
+  indent: 2
+  start_indented: false
+
+# Line length
+MD013:       # Line length
+  line_length: 120
+  heading_line_length: 120
+  code_block_line_length: 120
+  tables: false  # Don't check tables
+  code_blocks: false  # Don't check code blocks
+  headings: false  # Don't check headings (frontmatter can be long)
+
+# Blank lines
+MD012:       # Multiple consecutive blank lines
+  maximum: 2
+
+# Inline HTML
+MD033:       # Inline HTML
+  allowed_elements:
+    - br      # Allow line breaks
+    - details # Allow collapsible sections
+    - summary
+
+# Code blocks
+MD040: true  # Fenced code blocks should have a language
+MD046:       # Code block style
+  style: fenced  # Use ``` style
+
+# Emphasis
+MD049:       # Emphasis style
+  style: asterisk  # Use *emphasis*
+MD050:       # Strong style
+  style: asterisk  # Use **strong**
+
+# Links
+MD051: true  # Link fragments should be valid
+
+# Frontmatter
+MD041: false # Allow frontmatter at start (YAML headers)
+
+# Lists
+MD029:       # Ordered list item prefix
+  style: ordered  # Use 1. 2. 3. etc
+
+# Special rules
+MD024:       # Multiple headings with same content
+  siblings_only: true  # Allow same heading in different sections
+
+# Horizontal rules
+MD035:       # Horizontal rule style
+  style: "---"
+
+

@@ -1,0 +1,40 @@
+{
+  "name": "@ros2-zenoh/tools",
+  "version": "0.1.0",
+  "description": "Documentation and validation tools for ros2-zenoh",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "ros2-zenoh-tools": "./dist/cli/validate.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "validate": "node dist/cli/validate.js",
+    "fix-naming": "node dist/cli/fix-naming.js",
+    "test": "node --test"
+  },
+  "keywords": [
+    "ros2",
+    "zenoh",
+    "documentation",
+    "validation",
+    "tools"
+  ],
+  "author": "ros2-zenoh contributors",
+  "license": "MIT",
+  "dependencies": {
+    "yaml": "^2.3.4",
+    "gray-matter": "^4.0.3",
+    "glob": "^10.3.10"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+

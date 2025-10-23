@@ -1,0 +1,20 @@
+# User-specific workspace files
+workspace
+workspace.json
+
+# Cache
+cache/
+
+# User-installed plugins
+plugins/
+
+# User-specific hotkeys
+hotkeys.json
+
+# Theme is user preference
+themes/
+
+# But DO track these:
+# - app.json (vault settings)
+# - templates/ (note templates)
+

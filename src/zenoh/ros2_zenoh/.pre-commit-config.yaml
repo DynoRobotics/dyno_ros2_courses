@@ -1,0 +1,96 @@
+# Pre-commit hooks for ros2_zenoh ecosystem
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Ruff - Python linting and formatting (FAST!)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      # Linter
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      # Formatter
+      - id: ruff-format
+
+  # Markdown linting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.42.0
+    hooks:
+      - id: markdownlint
+        args: [--fix]
+        files: \.(md|markdown)$
+
+  # YAML linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: [-c, .yamllint.yaml]
+
+  # Typos (Rust-based spell checker)
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.26.0
+    hooks:
+      - id: typos
+        args: [--force-exclude]
+        exclude: |
+          (?x)(
+            ^poetry\.lock$|
+            ^Cargo\.lock$|
+            \.min\.js$
+          )
+
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--unsafe]  # Allow custom YAML tags
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # Documentation validation (TypeScript tools)
+  - repo: local
+    hooks:
+      - id: validate-docs
+        name: Validate Documentation (TypeScript)
+        entry: bash -c 'cd typescript/ros2-zenoh-tools && npm run validate'
+        language: system
+        files: ^docs/.*\.md$
+        pass_filenames: false
+
+      - id: test-doc-code-syntax
+        name: Test Documentation Code Examples
+        entry: python tools/test_documentation.py
+        language: system
+        files: ^docs/.*\.md$
+        pass_filenames: false
+
+      - id: validate-spec-code-sync
+        name: Validate Spec-Code Synchronization
+        entry: python tools/validate_spec_code_sync.py
+        language: system
+        files: ^(docs/06-Specs/Python/.*\.md|python/.*\.py)$
+        pass_filenames: false
+
+      - id: generate-api-docs
+        name: Generate API Documentation
+        entry: python tools/generate_api_docs.py
+        language: system
+        files: ^python/.*\.py$
+        pass_filenames: false
+
+      - id: check-no-todos-in-main
+        name: No TODOs in main branch
+        entry: grep -r "TODO\|FIXME\|XXX" --include="*.py" python/
+        language: system
+        pass_filenames: false
+        always_run: false
+

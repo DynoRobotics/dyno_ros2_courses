@@ -1,0 +1,810 @@
+# ROS2 Zenoh Project Rules
+
+**Purpose:** Ensure consistent documentation, code quality, and AI governance across the project.
+
+---
+
+## Quick Reference
+
+**Validation Commands:**
+```bash
+just validate   # All validations (lint, typecheck, frontmatter, specs, docs)
+just fmt        # Format Python with Ruff
+just test       # Run Python tests
+just test-docs  # Test documentation code examples
+just ci         # Full CI pipeline
+
+# TypeScript documentation tools (primary validation)
+cd typescript/ros2-zenoh-tools && npm run validate
+```
+
+**Create New Documents:**
+```bash
+just new-spec ComponentName       # Create new specification
+just new-pattern PatternName      # Create new pattern
+```
+
+**Key Files:**
+- `ruff.toml` - Python linting/formatting config (Ruff)
+- `.markdownlint.yaml` - Markdown style rules
+- `.yamllint.yaml` - YAML frontmatter rules
+- `pyproject.toml` - Python workspace config
+- `typescript/ros2-zenoh-tools/` - TypeScript documentation tools (primary validation)
+- `tools/validate_*.py` - Legacy Python validation scripts
+
+---
+
+## Documentation Standards
+
+### Universal Frontmatter Fields (All Markdown Files)
+
+Every markdown file in `docs/` uses **structured frontmatter** (no explicit `id` field - IDs are derived):
+
+```yaml
+---
+# Core Identity (ID is derived from type + name/number)
+type: spec | adr | pattern | convention | tutorial | howto | concept
+name: component-name                     # For specs, patterns, conventions (matches filename!)
+number: "NNN"                            # For ADRs only (e.g., "002")
+title: Human Readable Title              # 3-100 chars
+
+# Classification & Governance
+classification: public | internal | confidential | restricted
+llm_processing: allowed | cloud-ok | on-prem-only | no-llm | review-required
+schema_version: "1.0"
+
+# Authorship
+author: Name or Team                     # Optional, defaults to "Development Team"
+maintainer: Name or Team                 # Optional, who maintains this
+reviewed_by: Name                        # Optional, last reviewer
+
+# Discoverability
+summary: One-sentence summary            # Max 120 chars, for search/preview
+tags: [tag1, tag2, tag3]                # Searchable keywords
+---
+```
+
+**Field Definitions:**
+
+**classification:**
+- `public` - Can be shared externally, published online
+- `internal` - Internal use only, not for external sharing
+- `confidential` - Sensitive, restricted access, watermarked
+- `restricted` - Highly sensitive, legal/compliance restrictions
+
+**llm_processing:**
+- `cloud-ok` - Can be sent to cloud LLMs (Claude, GPT-4, etc.)
+- `on-prem-only` - Must use local/on-premises LLMs only
+- `no-llm` - Do not process with LLMs (manual review only)
+- `review-required` - LLM output must be human-reviewed before use
+
+**Default if not specified:**
+- classification: `internal`
+- llm_processing: `allowed`
+- schema_version: `"1.0"`
+
+---
+
+### ⚠️ CRITICAL: Wikilinks and Cross-References
+
+**FOR LLMs**: Three separate systems - understand the difference!
+
+#### 1. Wikilinks in Markdown Content
+**Always use FILENAMES** (lowercase, without .md):
+```markdown
+✅ CORRECT:
+See [[clock]] for core behavior.
+See [[clock-python]] for Python API  
+.
+Follows [[002-three-time-modes]].
+
+❌ WRONG - Don't use these:
+[[spec:clock]]           # Not derived IDs!
+[[Clock]]                # Not title case!
+[[spec-clock]]           # Not with namespace prefix!
+```
+
+#### 2. Cross-References in Frontmatter
+**Use just names/numbers** (no namespace prefix):
+```yaml
+✅ CORRECT:
+related_specs: [clock, rate]           # Just names
+related_adrs: [002, 005]               # Just numbers
+related_patterns: [fixed-rate-loop]    # Just names
+
+❌ WRONG:
+related_specs: ["spec:clock"]    # Don't include namespace!
+related_specs: [[clock]]         # Not wikilinks in YAML!
+```
+
+#### 3. Derived IDs (For Tools Only)
+Tools derive IDs automatically - **you never write them**:
+- `type: spec, name: clock` → `spec:clock`
+- `type: adr, number: "002"` → `adr:002`
+- `type: pattern, name: fixed-rate-loop` → `pattern:fixed-rate-loop`
+
+#### 4. Filename MUST Match Name Field
+```yaml
+# ✅ File: clock.md
+name: clock                 # Matches!
+
+# ✅ File: clock-python.md
+name: clock-python          # Matches!
+
+# ✅ File: 002-three-time-modes.md
+type: adr
+number: "002"              # ADRs use number, not name
+
+# ❌ File: my-clock.md
+name: clock                # Doesn't match - ERROR!
+```
+
+---
+
+### Specification Frontmatter (docs/06-Specs/*.md)
+
+Component specifications include additional fields:
+
+```yaml
+---
+# Core (from universal)
+id: spec:<component-name>
+title: Component Name Specification
+type: reference
+updated: YYYY-MM-DD
+
+# Classification (from universal)
+classification: public | internal | confidential | restricted
+llm_processing: cloud-ok | on-prem-only | no-llm | review-required
+license: MIT
+
+# Spec-Specific
+category: spec
+domain: <domain>.<subdomain>             # e.g., "testing.mocks", "safety.collision"
+pattern: pattern:<pattern-name>          # Which pattern this follows
+version: "X.Y"                           # Semantic version
+status: draft | review | approved | implemented | deprecated
+generate: true | false                   # Is this generatable?
+derived_from: <source-path-or-empty>    # What this was extracted from
+
+# Safety & Compliance
+safety_critical: true | false            # Safety-critical component?
+security_sensitive: true | false         # Handles sensitive data?
+compliance: []                           # e.g., [MISRA, ISO26262, GDPR]
+hazard_level: none | low | medium | high | critical
+
+# Lifecycle
+deprecated_by: spec:<replacement>        # If deprecated, what replaces it?
+deprecation_date: YYYY-MM-DD            # When was it deprecated?
+eol_date: YYYY-MM-DD                    # When will it be removed?
+
+# Relationships
+depends_on: []                           # IDs of dependencies
+related: []                              # IDs of related specs
+supersedes: spec:<old-spec>             # If this replaces another
+
+# Implementation Tracking
+implementation:
+  python: implemented | in-progress | planned | n/a
+  rust: implemented | in-progress | planned | n/a
+  c: implemented | in-progress | planned | n/a
+  typescript: implemented | in-progress | planned | n/a
+
+# External References
+issue: "#123"                            # GitHub issue
+pr: "#456"                               # GitHub PR
+epic: "PROJ-789"                        # Jira epic (if applicable)
+---
+```
+
+---
+
+### Pattern Frontmatter (docs/05-Patterns/*.md)
+
+```yaml
+---
+# Core (from universal)
+id: pattern:<pattern-name>
+title: Pattern Name
+type: reference
+updated: YYYY-MM-DD
+
+# Classification (from universal)
+classification: public
+llm_processing: cloud-ok
+license: CC-BY-4.0
+
+# Pattern-Specific
+category: pattern
+version: "X.Y"
+status: draft | proven | deprecated
+derived_from: <code-path>               # Source code this was extracted from
+languages: [python, rust, c, typescript]
+
+# Pattern Metadata
+complexity: simple | moderate | complex
+use_cases: []                           # List of when to use
+anti_patterns: []                       # What NOT to do
+related_patterns: []                    # IDs of related patterns
+
+# Quality Attributes
+performance: O(n) | O(1) | etc          # Complexity
+memory: low | medium | high
+testability: high | medium | low
+---
+```
+
+---
+
+### Concept/Tutorial/HowTo Frontmatter (docs/01-Concepts/*.md, etc.)
+
+```yaml
+---
+# Core (from universal)
+id: concept:<name> | tutorial:<name> | howto:<name>
+title: Document Title
+type: concept | tutorial | howto
+updated: YYYY-MM-DD
+
+# Classification (from universal)
+classification: public
+llm_processing: cloud-ok
+license: CC-BY-4.0
+
+# Content Metadata
+category: explanation | learning | problem-solving
+difficulty: beginner | intermediate | advanced
+estimated_time: <minutes>               # Reading/completion time
+prerequisites: []                        # IDs of required knowledge
+
+# Diátaxis Classification (https://diataxis.fr/)
+diataxis_type: explanation | tutorial | how-to | reference
+practical: true | false                 # Hands-on?
+study_oriented: true | false            # Learning-focused?
+problem_oriented: true | false          # Solving specific problem?
+information_oriented: true | false      # Reference material?
+---
+```
+
+---
+
+### Index/MOC Frontmatter (docs/00-Index/*.md)
+
+```yaml
+---
+# Core (from universal)
+id: index:<name>
+title: Index or Map of Content
+type: index
+updated: YYYY-MM-DD
+
+# Classification (from universal)
+classification: public
+llm_processing: cloud-ok
+license: CC-BY-4.0
+
+# Index-Specific
+category: moc | index | navigation
+scope: all | <specific-area>            # What does this index cover?
+---
+```
+
+---
+
+## Future-Proofing Strategy
+
+### 1. Extensibility via Namespaces
+
+Use namespaced fields for extensions:
+
+```yaml
+---
+# Core fields (defined above)
+id: spec:my-component
+title: My Component
+
+# Custom namespace for organization-specific fields
+org:
+  cost_center: "CC-1234"
+  business_unit: "Robotics"
+  approval_required: true
+
+# Tool-specific namespace
+tooling:
+  generated_by: "ros2-zenoh-mcp v1.2.3"
+  generation_timestamp: "2025-10-23T10:30:00Z"
+  generator_config:
+    mode: "llm"
+    model: "claude-sonnet-4.5"
+
+# Experimental fields (may be promoted to core later)
+experimental:
+  multimodal: true
+  hardware_specific: ["nvidia-jetson", "raspberry-pi"]
+---
+```
+
+### 2. Schema Versioning
+
+```yaml
+---
+schema_version: "1.0"    # Frontmatter schema version
+# ... other fields
+---
+```
+
+**Benefits:**
+- Can evolve schema without breaking old docs
+- Tools can handle multiple versions
+- Migration path is clear
+
+### 3. Unknown Field Policy
+
+**Rule:** Unknown fields are IGNORED, not errors
+
+**Benefits:**
+- Old tools work with new docs (ignore new fields)
+- New tools work with old docs (use defaults)
+- Experimental fields can be added without breaking anything
+
+### 4. Required vs Optional
+
+**Required (Always):**
+- `id`, `title`, `type`, `updated`
+
+**Required (Context-Dependent):**
+- Specs: `category`, `domain`, `pattern`, `version`, `status`
+- Patterns: `category`, `version`, `status`, `languages`
+
+**Optional (Can Omit):**
+- Everything else (tools use sensible defaults)
+
+### 5. Semantic Versioning for Schemas
+
+```
+Schema v1.0 → Initial version
+Schema v1.1 → Add optional fields (backward compatible)
+Schema v1.2 → Add more optional fields
+Schema v2.0 → Breaking change (rename/remove fields)
+```
+
+**Migration strategy:**
+```bash
+# Migrate from v1.x to v2.0
+tools/migrate_frontmatter.py --from 1.x --to 2.0
+```
+
+---
+
+## LLM Processing Policy Enforcement
+
+### When `llm_processing: cloud-ok`
+
+```
+✅ Can use Claude, GPT-4, Gemini, etc.
+✅ Can send full content to cloud APIs
+✅ Can store in cloud training data (check ToS)
+```
+
+### When `llm_processing: on-prem-only`
+
+```
+⚠️  Must use local LLMs (llama.cpp, Ollama, etc.)
+⚠️  No cloud API calls
+⚠️  Can use Cursor with local model proxy
+✅ Can use for training local models
+```
+
+### When `llm_processing: no-llm`
+
+```
+❌ No LLM processing allowed
+❌ Human review only
+✅ Can read for context
+❌ Cannot generate from this
+```
+
+### When `llm_processing: review-required`
+
+```
+⚠️  LLM can process
+⚠️  Human MUST review all output
+⚠️  Mark generated content clearly
+✅ Useful for draft generation
+```
+
+**Implementation:**
+
+Add to MCP tools (Phase 4):
+```typescript
+async function readDocument(path: string) {
+  const doc = await fs.readFile(path);
+  const frontmatter = parseFrontmatter(doc);
+  
+  if (frontmatter.llm_processing === 'no-llm') {
+    throw new Error('This document cannot be processed by LLMs');
+  }
+  
+  if (frontmatter.llm_processing === 'on-prem-only') {
+    if (process.env.LLM_ENDPOINT?.includes('api.anthropic.com')) {
+      throw new Error('Document requires on-premises LLM');
+    }
+  }
+  
+  return {
+    content: doc,
+    metadata: frontmatter,
+    restrictions: frontmatter.llm_processing
+  };
+}
+```
+
+---
+
+## Classification Policy Enforcement
+
+### When `classification: public`
+
+```
+✅ Can share externally
+✅ Can publish online
+✅ Can include in open source
+✅ No watermarking needed
+```
+
+### When `classification: internal`
+
+```
+⚠️  Internal use only
+❌ Do not publish publicly
+❌ Do not include in public repos
+✅ Share within organization
+```
+
+### When `classification: confidential`
+
+```
+❌ Restricted access only
+❌ No external sharing
+⚠️  Watermark generated content
+⚠️  Access logging required
+```
+
+### When `classification: restricted`
+
+```
+❌ Highly sensitive
+❌ Legal/compliance restrictions
+❌ Audit trail required
+❌ May require clearance
+```
+
+---
+
+## Validation Rules
+
+### Required Field Validation
+
+```python
+REQUIRED_UNIVERSAL = ['id', 'title', 'type', 'updated']
+
+REQUIRED_BY_TYPE = {
+    'spec': ['category', 'domain', 'pattern', 'version', 'status'],
+    'pattern': ['category', 'version', 'status', 'languages'],
+}
+
+def validate_frontmatter(frontmatter, file_type):
+    # Check universal required
+    for field in REQUIRED_UNIVERSAL:
+        assert field in frontmatter, f"Missing required field: {field}"
+    
+    # Check type-specific required
+    if file_type in REQUIRED_BY_TYPE:
+        for field in REQUIRED_BY_TYPE[file_type]:
+            assert field in frontmatter, f"Missing required field for {file_type}: {field}"
+    
+    # Validate enums
+    assert frontmatter.get('classification') in [
+        None, 'public', 'internal', 'confidential', 'restricted'
+    ], "Invalid classification"
+    
+    assert frontmatter.get('llm_processing') in [
+        None, 'cloud-ok', 'on-prem-only', 'no-llm', 'review-required'
+    ], "Invalid llm_processing"
+```
+
+---
+
+## Default Values
+
+When fields are omitted:
+
+```yaml
+# Defaults
+classification: internal
+llm_processing: cloud-ok
+license: MIT (code) | CC-BY-4.0 (docs)
+author: Development Team
+status: draft
+version: "0.1"
+safety_critical: false
+security_sensitive: false
+generate: false
+```
+
+---
+
+## Example: Complete Specification
+
+```yaml
+---
+# Core Identity
+id: spec:testing-clock
+title: Testing Clock Specification
+type: reference
+updated: 2025-10-23
+
+# Classification & Governance
+classification: public
+llm_processing: cloud-ok
+license: MIT
+author: Development Team
+reviewed_by: Tech Lead
+
+# Discoverability
+summary: Simulation time management for deterministic testing
+tags: [spec, testing, time, clock]
+
+# Spec-Specific
+category: spec
+domain: testing.infrastructure
+pattern: pattern:time-management
+version: "1.0"
+status: review
+generate: true
+derived_from: ""
+
+# Safety & Compliance
+safety_critical: false
+security_sensitive: false
+compliance: []
+hazard_level: none
+
+# Relationships
+depends_on: []
+related: [spec:testing-mocks]
+supersedes: ""
+
+# Implementation Tracking
+implementation:
+  python: in-progress
+  rust: planned
+  c: planned
+  typescript: planned
+
+# External References
+issue: ""
+pr: ""
+epic: ""
+
+# Future-Proofing
+schema_version: "1.0"
+---
+
+# Testing Clock Specification
+...
+```
+
+---
+
+## Benefits of This Schema
+
+| Aspect | Benefit |
+|--------|---------|
+| **Governance** | Clear data classification + LLM policies |
+| **Extensible** | Namespaced custom fields |
+| **Versioned** | Schema evolution without breaking |
+| **Discoverable** | Rich metadata for search |
+| **Traceable** | Links to issues, PRs, dependencies |
+| **Safe** | Safety/security annotations |
+| **Standard** | Follows industry best practices |
+
+---
+
+## Validation Tools
+
+**Before committing, all code is automatically validated:**
+
+### Python Validation (Ruff - Rust-based, 100x faster!)
+```bash
+just fmt        # Format Python code
+just lint       # Lint all code
+just typecheck  # Type check with mypy
+```
+
+Configuration: `ruff.toml`, `pyproject.toml`
+
+### Documentation Validation
+```bash
+just test-docs  # Test code examples in docs
+python tools/validate_frontmatter.py  # Validate YAML frontmatter
+python tools/validate_specs.py        # Check spec completeness
+```
+
+### All Validations
+```bash
+just validate   # Run all validations
+just ci         # Full CI pipeline (validate + test)
+```
+
+### Pre-Commit Hooks
+All validations run automatically on commit:
+```bash
+pre-commit install  # One-time setup
+git commit          # Auto-runs all checks
+```
+
+---
+
+## Claude AI Behavior
+
+When generating documents, I will:
+
+1. ✅ Always include required fields (validated by `tools/validate_frontmatter.py`)
+2. ✅ Use appropriate defaults for optional fields
+3. ✅ Respect `llm_processing` restrictions
+4. ✅ Validate enums against allowed values
+5. ✅ Include `schema_version: "1.0"` for forward compatibility
+6. ✅ Use ISO 8601 dates (YYYY-MM-DD)
+7. ✅ Use kebab-case for IDs
+8. ✅ Keep summaries under 120 characters
+9. ✅ Ensure Python code examples have valid syntax (tested by `tools/test_documentation.py`)
+10. ✅ Include necessary imports in tutorial examples
+11. ✅ Mark pseudo-code with `{{placeholders}}`, `...`, or `# Pseudo-code`
+
+When generating code, I will:
+
+1. ✅ Follow ruff rules (configured in `ruff.toml`)
+2. ✅ Include type hints for all functions
+3. ✅ Use `@dataclass(frozen=True)` for immutable state
+4. ✅ Inject Clock and Node via `__init__`
+5. ✅ Write docstrings in Google style
+6. ✅ Run `just fmt` before presenting code
+7. ✅ Ensure all code passes `just validate`
+
+---
+
+## Python Code Standards
+
+### Type Hints
+- Always use type hints for function signatures
+- Use `from __future__ import annotations` for forward references
+- Use `typing.Protocol` for structural subtyping
+
+### Async/Await
+- All I/O operations MUST be async
+- Use `asyncio.gather()` for parallel operations
+- Use `asyncio.Queue` for inter-task communication
+
+### Immutable State
+- Use `@dataclass(frozen=True)` for state
+- Never mutate state in-place
+- Return new state objects
+
+### Dependency Injection
+- Inject `Clock` via `__init__`
+- Inject `Node` via `__init__`
+- Make dependencies explicit
+
+### Ring Buffers
+- Use `collections.deque(maxlen=depth)` for bounded queues
+- Drop oldest when full (matches ROS2 behavior)
+
+### Error Handling
+- Use specific exceptions
+- Log errors with context
+- Graceful degradation
+
+---
+
+## Testing Standards
+
+### Test Isolation
+- Each test MUST be independent
+- Use `MockNode`, not real `Node`
+- Use `Clock(TimeMode.TEST)` for deterministic timing
+
+### No Static Sleeps
+- NEVER use `asyncio.sleep()` with fixed durations
+- Use `clock.advance_by()` for time progression
+- Use `wait_for_*()` methods for discovery
+
+### Fast Execution
+- All tests MUST complete in < 10 seconds total
+- Individual test < 1 second (typical)
+- Use in-memory mocks (no network I/O)
+
+### Coverage
+- Aim for >90% code coverage
+- Test edge cases and error paths
+- Include performance tests for critical paths
+
+---
+
+## Documentation Standards
+
+### Markdown
+- Use ATX headings (`#`, `##`, not underline style)
+- Use fenced code blocks with language identifiers
+- Use tables for structured data
+- Use Mermaid for diagrams
+
+### Wikilinks
+- Use `[[Document-Name]]` for internal links
+- Use full titles (Obsidian will resolve)
+- Link liberally for discoverability
+
+### Code Examples
+- All examples MUST be runnable
+- Include imports and setup
+- Show typical usage
+- Include error handling example
+
+---
+
+## Design Principles
+
+When implementing ros2-zenoh components:
+
+### 1. Priority 1: rmw_zenoh Interoperability
+- Default configuration MUST work with rmw_zenoh
+- Match rmw_zenoh behavior exactly
+- Test against actual rmw_zenoh nodes
+- NOT compatible with DDS-based RMWs (FastDDS, CycloneDDS) without a bridge
+
+### 2. Conservative Defaults
+- `encoding="cdr"` (always default, rmw_zenoh compatible)
+- Standard key format: `0/{topic}/{idl_type}/{hash}`
+- Standard liveliness: `@ros2_lv/...`
+- Namespace isolation for non-CDR: `zenoh_{encoding}/`, `@zenoh_app/{encoding}/`
+
+### 3. Advanced Features are Explicit Opt-In
+- Non-CDR encodings require explicit parameter
+- Document as "not compatible with rmw_zenoh"
+- Warn users about compatibility implications
+- Use different namespace to prevent cross-talk
+
+### 4. Initialization Patterns (No Built-in Lifecycle)
+- **Always**: Initialize state BEFORE creating subscriptions
+- Use `async def setup()` pattern for complex initialization
+- Use context managers (`async with`) for cleanup
+- Document potential race conditions clearly
+- NO lifecycle system - keep simple (see ADR-005)
+
+### 5. Safe Component Pattern
+
+```python
+class SafeComponent:
+    def __init__(self, node):
+        self.node = node
+        # Don't create subscriptions here!
+    
+    async def setup(self):
+        # 1. State first
+        self.state = await initialize_state()
+        
+        # 2. Subscriptions after
+        self.sub = self.node.create_subscription(...)
+    
+    async def teardown(self):
+        # Reverse order: subs then state
+        self.sub.destroy()
+        await self.state.cleanup()
+```
+
+### 6. When Uncertain
+- Prioritize compatibility over features
+- Match rmw_zenoh behavior
+- Document limitations clearly
+- Keep it simple (YAGNI)
+

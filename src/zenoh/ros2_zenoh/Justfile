@@ -1,0 +1,167 @@
+# Justfile for ros2_zenoh ecosystem
+# Install just: cargo install just OR curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/bin
+# Run: just <command>
+# List commands: just --list
+
+# Default recipe (show help)
+default:
+    @just --list
+
+# Setup development environment
+setup:
+    @echo "Setting up development environment..."
+    pip install --upgrade pip
+    pip install ruff mypy pytest pytest-asyncio pytest-cov pre-commit
+    pre-commit install
+    @echo "✓ Development environment ready!"
+
+# Format all Python code
+fmt:
+    @echo "Formatting Python code with Ruff..."
+    ruff format python/
+    @echo "✓ Formatting complete!"
+
+# Lint all code
+lint:
+    @echo "Linting Python code..."
+    ruff check python/ --fix
+    @echo "Linting markdown..."
+    markdownlint --fix 'docs/**/*.md'
+    @echo "Linting YAML..."
+    yamllint docs/
+    @echo "✓ Linting complete!"
+
+# Type check Python code
+typecheck:
+    @echo "Type checking with mypy..."
+    mypy python/ros2_zenoh_python --config-file pyproject.toml
+    @echo "✓ Type checking complete!"
+
+# Run all validations
+validate: lint typecheck
+    @echo "Running all validations..."
+    python tools/validate_frontmatter.py
+    python tools/validate_specs.py
+    python tools/validate_spec_code_sync.py
+    python tools/test_documentation.py
+    @echo "✓ All validations passed!"
+
+# Test documentation code examples
+test-docs:
+    @echo "Testing documentation code examples..."
+    python tools/test_documentation.py
+    @echo "✓ Documentation tests passed!"
+
+# Run tests
+test:
+    @echo "Running tests..."
+    pytest python/ros2_zenoh_python/tests -v
+
+# Run tests with coverage
+test-cov:
+    @echo "Running tests with coverage..."
+    pytest python/ros2_zenoh_python/tests --cov=python/ros2_zenoh_python --cov-report=html --cov-report=term
+    @echo "✓ Coverage report generated in htmlcov/"
+
+# Run only fast tests
+test-fast:
+    @echo "Running fast tests only..."
+    pytest python/ros2_zenoh_python/tests -v -m "not slow"
+
+# Run interop tests
+test-interop:
+    @echo "Running interop tests..."
+    pytest python/ros2_zenoh_python/tests -v -m "interop"
+
+# Clean build artifacts
+clean:
+    @echo "Cleaning build artifacts..."
+    find . -type d -name "__pycache__" -exec rm -rf {} +
+    find . -type d -name "*.egg-info" -exec rm -rf {} +
+    find . -type d -name ".pytest_cache" -exec rm -rf {} +
+    find . -type d -name ".ruff_cache" -exec rm -rf {} +
+    find . -type d -name ".mypy_cache" -exec rm -rf {} +
+    find . -type d -name "htmlcov" -exec rm -rf {} +
+    find . -type f -name ".coverage" -delete
+    @echo "✓ Cleaned!"
+
+# Generate API documentation from source code
+api-docs:
+    @echo "Generating API documentation..."
+    python tools/generate_api_docs.py
+    @echo "✓ API docs generated!"
+
+# Build all documentation
+docs: api-docs
+    @echo "Building documentation..."
+    @echo "✓ Documentation built!"
+
+# Run CI pipeline locally
+ci: validate test
+    @echo "✓ CI pipeline passed!"
+
+# Check for typos
+typos:
+    @echo "Checking for typos..."
+    typos .
+    @echo "✓ No typos found!"
+
+# Fix typos
+typos-fix:
+    @echo "Fixing typos..."
+    typos --write-changes .
+    @echo "✓ Typos fixed!"
+
+# Pre-commit all files
+pre-commit:
+    @echo "Running pre-commit on all files..."
+    pre-commit run --all-files
+    @echo "✓ Pre-commit passed!"
+
+# Create new spec from template
+new-spec NAME:
+    @echo "Creating new spec: {{NAME}}"
+    @cp docs/.obsidian/templates/component-spec.md docs/06-Specs/{{NAME}}.md
+    @echo "✓ Created docs/06-Specs/{{NAME}}.md"
+    @echo "Now edit and fill in the template!"
+
+# Create new pattern from template
+new-pattern NAME:
+    @echo "Creating new pattern: {{NAME}}"
+    @cp docs/.obsidian/templates/pattern.md docs/05-Patterns/{{NAME}}.md
+    @echo "✓ Created docs/05-Patterns/{{NAME}}.md"
+    @echo "Now edit and fill in the template!"
+
+# Generate code from spec (future - Phase 4)
+generate SPEC:
+    @echo "Generating code from spec: {{SPEC}}"
+    @echo "TODO: Implement code generation"
+
+# Watch and auto-run tests
+watch:
+    @echo "Watching for changes..."
+    @echo "TODO: Add pytest-watch or similar"
+
+# Show statistics
+stats:
+    @echo "Code Statistics:"
+    @echo "Python files:"
+    @find python -name "*.py" | wc -l
+    @echo "Test files:"
+    @find python -name "test_*.py" | wc -l
+    @echo "Documentation files:"
+    @find docs -name "*.md" | wc -l
+    @echo "Specifications:"
+    @find docs/06-Specs -name "*.md" | wc -l
+    @echo "Patterns:"
+    @find docs/05-Patterns -name "*.md" | wc -l
+    @echo ""
+    @echo "Lines of code:"
+    @find python -name "*.py" -not -path "*/tests/*" -exec cat {} \; | wc -l
+
+# Install in development mode
+dev-install:
+    @echo "Installing in development mode..."
+    @cd python/ros2_zenoh_python && pip install -e .
+    @echo "✓ Installed!"
+

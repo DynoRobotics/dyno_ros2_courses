@@ -1,0 +1,197 @@
+from dataclasses import dataclass, field
+from typing import List, Optional, TYPE_CHECKING
+
+
+try:
+    from pycdr2 import IdlStruct
+    from pycdr2.types import int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, array
+    PYCDR2_AVAILABLE = True
+except ImportError:
+    PYCDR2_AVAILABLE = False
+    IdlStruct = object
+    int8 = uint8 = int16 = uint16 = int32 = uint32 = int64 = uint64 = int
+    float32 = float64 = float
+    array = list  # Fallback
+
+
+
+# Import other package modules (not individual classes to avoid circular imports)
+
+from ...builtin_interfaces import msg as builtin_interfaces_msg
+
+
+
+if TYPE_CHECKING:
+    pass
+
+
+
+
+@dataclass
+class ServiceEventInfo(IdlStruct, typename="service_msgs/ServiceEventInfo"):
+
+    """service_msgs/ServiceEventInfo message.
+    
+    Encoding: CDR
+
+    ROS 2 type hash: RIHS01_83f8498869e3b1fd8c8f70f3c5180a6846a370449e4a2767fd2c7294677d7262
+
+
+    DDS type name: service_msgs::msg::dds_::ServiceEventInfo_
+
+    """
+
+    # Constants
+
+    REQUEST_SENT = 0
+
+    REQUEST_RECEIVED = 1
+
+    RESPONSE_SENT = 2
+
+    RESPONSE_RECEIVED = 3
+
+
+
+    event_type: uint8 = 0
+
+    stamp: builtin_interfaces_msg.Time = field(default_factory=lambda: builtin_interfaces_msg.Time())
+
+    client_gid: array[uint8, 16] = field(default_factory=lambda: [0] * 16)
+
+    sequence_number: int64 = 0
+
+    
+
+    # ROS2 Type Hash (RIHS01)
+    TYPE_HASH = "RIHS01_83f8498869e3b1fd8c8f70f3c5180a6846a370449e4a2767fd2c7294677d7262"
+
+
+    # DDS Type Name
+    DDS_TYPE_NAME = "service_msgs::msg::dds_::ServiceEventInfo_"
+
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary, recursively converting nested messages."""
+        result = {}
+
+
+        result['event_type'] = self.event_type
+
+
+
+        result['stamp'] = self.stamp.to_dict()
+
+
+
+        result['client_gid'] = self.client_gid
+
+
+
+        result['sequence_number'] = self.sequence_number
+
+
+        return result
+    
+    @classmethod
+    def from_dict(cls, data: dict):
+        """Create from dictionary, recursively creating nested messages."""
+        kwargs = {}
+
+        if 'event_type' in data:
+
+            kwargs['event_type'] = data['event_type']
+
+
+        if 'stamp' in data:
+
+            
+            kwargs['stamp'] = builtin_interfaces_msg.Time.from_dict(data['stamp'])
+            
+
+
+        if 'client_gid' in data:
+
+            kwargs['client_gid'] = data['client_gid']
+
+
+        if 'sequence_number' in data:
+
+            kwargs['sequence_number'] = data['sequence_number']
+
+
+        return cls(**kwargs)
+    
+    # Get encoding function references (zero overhead!)
+    @classmethod
+    def get_serializer(cls, encoding: str = 'cdr'):
+        """
+        Get serializer function for the specified encoding.
+        
+        Returns a function that serializes instances of this message type.
+        Use this for zero-overhead serialization in hot paths.
+        
+        Args:
+            encoding: One of 'cdr', 'json', 'msgpack'
+            
+        Returns:
+            Function that takes a message instance and returns bytes
+            
+        Example:
+            serialize = Twist.get_serializer('cdr')
+            data = serialize(msg)  # Zero overhead!
+        """
+        from functools import partial
+        from ..._encodings import serialize_cdr, serialize_json, serialize_msgpack
+        
+        serializers = {
+            'cdr': partial(serialize_cdr, typename=cls.__name__),
+            'json': serialize_json,
+            'msgpack': serialize_msgpack,
+        }
+        if encoding not in serializers:
+            raise ValueError(f"Unknown encoding '{encoding}'. Available: {list(serializers.keys())}")
+        return serializers[encoding]
+    
+    @classmethod
+    def get_deserializer(cls, encoding: str = 'cdr'):
+        """
+        Get deserializer function for the specified encoding.
+        
+        Returns a function that deserializes bytes to instances of this message type.
+        Use this for zero-overhead deserialization in hot paths.
+        
+        Args:
+            encoding: One of 'cdr', 'json', 'msgpack'
+            
+        Returns:
+            Function that takes bytes and returns a message instance
+            
+        Example:
+            deserialize = Twist.get_deserializer('cdr')
+            msg = deserialize(data)  # Zero overhead!
+        """
+        from functools import partial
+        from ..._encodings import deserialize_cdr, deserialize_json, deserialize_msgpack
+        
+        deserializers = {
+            'cdr': partial(deserialize_cdr, typename=cls.__name__, cls=cls),
+            'json': partial(deserialize_json, cls=cls),
+            'msgpack': partial(deserialize_msgpack, cls=cls),
+        }
+        if encoding not in deserializers:
+            raise ValueError(f"Unknown encoding '{encoding}'. Available: {list(deserializers.keys())}")
+        return deserializers[encoding]
+    
+    # Convenience methods (optional - adds ~10ns overhead)
+    def serialize(self, encoding: str = 'cdr') -> bytes:
+        """Serialize message with specified encoding."""
+        serializer = self.get_serializer(encoding)
+        return serializer(self)
+    
+    @classmethod
+    def deserialize(cls, data: bytes, encoding: str = 'cdr'):
+        """Deserialize message with specified encoding."""
+        deserializer = cls.get_deserializer(encoding)
+        return deserializer(data)
+

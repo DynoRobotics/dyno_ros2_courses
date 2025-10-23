@@ -1,0 +1,17 @@
+{
+  "newFileLocation": "current",
+  "newLinkFormat": "relative",
+  "useMarkdownLinks": false,
+  "attachmentFolderPath": "./attachments",
+  "defaultViewMode": "source",
+  "showLineNumber": true,
+  "showFrontmatter": true,
+  "readableLineLength": false,
+  "strictLineBreaks": false,
+  "showUnsupportedFiles": false,
+  "alwaysUpdateLinks": true,
+  "spellcheck": true,
+  "spellcheckLanguages": ["en-US"],
+  "foldHeading": true,
+  "foldIndent": true
+}
